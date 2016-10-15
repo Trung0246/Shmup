@@ -11,7 +11,7 @@ This is a development branch, [please go to stable branch for stable version](ht
 * Nothing, this library is currently being write.
 
 ## Changelog:
-* Added basic support for *repeat* and *wait*.
+* Added basic support for *repeat* and *wait* with new feature *func* to call custom function.
 * Rewrote library structure.
 * Fix bugs.
 
