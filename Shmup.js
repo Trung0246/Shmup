@@ -26,36 +26,6 @@
   SOFTWARE.
   */
   
-  /*
-  ----------------- TODO LIST -----------------
-  
-  1) Create checkError(type, checkData) function to check error of type's parameter if "checkData" is defined
-  2) Create checkError(type, checkData) function to check error if flag[name]."type" is defined if "checkData" is not defined
-  3) Change "testChange" function to compatible with actions
-  4) Retest "testChange" after changed function
-  5) Make a way to remove bullets
-  6) Make fire to work with actionRef and bulletRef
-  7) Create new repeat algorithm to work like reference
-  
-  --------------- END TODO LIST ---------------
-  */
-  /*
-  ----------------- LOGIC LIST ----------------
-  
-  1) If commands.update() is called, then now frame will be plus to 1, and then when drawing function run,
-  it will check if frame is updated by checking now frame is larger than old frame, then plus old frame to
-  equal now frame, and use now frame to calculate frame to update bullets. This prevent frame being skipped
-  without drawing anything.
-  
-  2) If temp wait value = 0, keep running commands, if wait value is set to random number is not 0, then
-  minus 1 for each wait then skip other commands until commands.update() is called to update frame.
-  
-  3) If wait is called, then add wait times to temp wait and break the loop of methods, get current location
-  of array methods, then when update() is called again, check if wait is 0, then get previous location and
-  start from there.
-  
-  --------------- END LOGIC LIST --------------
-  */
   //Important variable
   var flag = {}, //private holder
       commands = {}, //commands holder
