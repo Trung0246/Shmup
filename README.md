@@ -9,7 +9,7 @@ Some feature were borrowed from java library bulletml by Kenta Cho :
 
 www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
-[**Download current development version**](https://cdn.rawgit.com/Trung0246/Shmup/bb449f80da05899c2225effed362fbaadc2d7b3c/Shmup.js)
+[**Download current development version**](https://cdn.rawgit.com/Trung0246/Shmup/e9230391ff32d2c1662b7c32ee20f9b417063b10/Shmup.js)
 
 ## Feature:
 * Nothing, this library is currently being write.
