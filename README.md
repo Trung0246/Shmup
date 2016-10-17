@@ -1,7 +1,7 @@
 # Shmup
 A library for bullet hell in Javascript
 
-Development version: **1.0.1**
+Development version: **1.0.2**
 
 This is a development branch, [please go to stable branch for stable version](https://github.com/Trung0246/Shmup/tree/stable).
 
@@ -11,10 +11,9 @@ This is a development branch, [please go to stable branch for stable version](ht
 * Nothing, this library is currently being write.
 
 ## Changelog:
-* Added basic support for *repeat* and *wait* with new feature *func* to call custom function.
-* Rewrote library structure.
+* Added  *fire* command with *actionRef* support.
 * Fix bugs.
 
 ## TODO list:
-* Add *fire* and *change* command with *actionRef* support.
-* Remove error handling
+* Add *change* command with *actionRef* support.
+* Remove error handling.
