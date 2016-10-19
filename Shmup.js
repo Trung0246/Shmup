@@ -443,6 +443,10 @@
     if (actionCommands.movement) {
       tempBullet.movement = actionCommands.movement;
     } else {
+      //Check for position
+      if (!actionCommands.position) {
+        actionCommands.position = {};
+      }
       //Check for position now and end
       if (actionCommands.position.now) {
         tempBullet.position.now = actionCommands.position.now;
