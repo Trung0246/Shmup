@@ -20,5 +20,6 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
 ## TODO list:
 * Add *vanish* command with *actionRef* support.
+* Fix direction and speed bug.
 * Compress cloned methods to one methods.
 * Remove error handling.
