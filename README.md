@@ -1,7 +1,7 @@
 # Shmup
 A library for bullet hell in Javascript
 
-Development version: **1.0.2**
+Development version: **1.0.3**
 
 This is a development branch, [please go to stable branch for stable version](https://github.com/Trung0246/Shmup/tree/stable).
 
@@ -15,9 +15,10 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Nothing, this library is currently being write.
 
 ## Changelog:
-* Added  *fire* command with *actionRef* support.
-* Fix bugs.
+* Added *change* command with *actionRef* support.
+* Fixed bugs.
 
 ## TODO list:
-* Add *change* command with *actionRef* support.
+* Add *vanish* command with *actionRef* support.
+* Compress cloned methods to one methods.
 * Remove error handling.
