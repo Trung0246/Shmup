@@ -1,6 +1,6 @@
 (function(window) {
   "use strict";
-  var VERSION = "1.0.2";
+  var VERSION = "1.0.3";
   
   /*
   MIT License
@@ -208,7 +208,7 @@
     if (flag[name].actions.fire[actionLabel]) {
       methods.actions(actionLabel, undefined, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel]);
     } else {
-      
+      throw new Error("Undefined actions of " + actionLabel);
     }
   };
   
@@ -233,40 +233,8 @@
       for (var bulletLabel in temp[name].bullets[actionLabel]) {
         for (var bulletCount = 0; bulletCount < temp[name].bullets[actionLabel][bulletLabel].length; bulletCount ++) {
           var tempBullet = temp[name].bullets[actionLabel][bulletLabel][bulletCount];
-          //Check movement data
-          if (typeof tempBullet.movement === "function") {
-            tempBullet.position.now = tempBullet.movement();
-          } else {
-            tempBullet.position.now[0] = Math.sin(tempBullet.direction.value) * tempBullet.speed.horizontal + tempBullet.position.now[0];
-            tempBullet.position.now[1] = Math.cos(tempBullet.direction.value) * tempBullet.speed.vertical + tempBullet.position.now[1];
-            //Check for direction velocity
-            if (tempBullet.direction.velocity) {
-              //Check for range
-              if (tempBullet.direction.velocity.range[0] <= tempBullet.direction.value && tempBullet.direction.velocity.range[1] >= tempBullet.direction.value) {
-                tempBullet.direction.value += tempBullet.direction.velocity.value;
-              } else if (tempBullet.direction.velocity.range[0] > tempBullet.direction.value || tempBullet.direction.velocity.range[1] < tempBullet.direction.value) {
-                tempBullet.direction.value = tempBullet.direction.velocity.value;
-              }
-            }
-            //Check for speed velocity
-            if (tempBullet.speed.velocity) {
-              //Check for range
-              if (tempBullet.speed.velocity.horizontal) {
-                if (tempBullet.speed.velocity.horizontal.range[0] <= tempBullet.speed.horizontal && tempBullet.speed.velocity.horizontal.range[1] >= tempBullet.speed.horizontal) {
-                  tempBullet.speed.horizontal += tempBullet.speed.velocity.horizontal.value;
-                } else if (tempBullet.speed.velocity.horizontal.range[0] > tempBullet.speed.horizontal || tempBullet.speed.velocity.horizontal.range[1] < tempBullet.speed.horizontal) {
-                  tempBullet.speed.horizontal = tempBullet.speed.velocity.horizontal.value;
-                }
-              }
-              if (tempBullet.speed.velocity.vertical) {
-                if (tempBullet.speed.velocity.vertical.range[0] <= tempBullet.speed.vertical && tempBullet.speed.velocity.vertical.range[1] >= tempBullet.speed.vertical) {
-                  tempBullet.speed.vertical += tempBullet.speed.velocity.vertical.value;
-                } else if (tempBullet.speed.velocity.vertical.range[0] > tempBullet.speed.vertical || tempBullet.speed.velocity.vertical.range[1] < tempBullet.speed.vertical) {
-                  tempBullet.speed.vertical = tempBullet.speed.velocity.vertical.value;
-                }
-              }
-            }
-          }
+          //process draw bullet data
+          tempBullet = drawBullet(tempBullet);
           //Process actionRef
           if (tempBullet.actionRef) {
             if (tempBullet.wait.times > 0) {
@@ -279,7 +247,7 @@
                 tempBullet.wait.times = undefined;
                 temp[name].wait.ref[tempBullet.actionRef][tempBullet.wait.label][tempBullet.flag].done = true;
               }
-              methods.actionRef(tempBullet.actionRef, undefined, flag[name].actions.ref[tempBullet.actionRef], tempBullet.commands, tempBullet, actionLabel);
+              methods.actionRef(tempBullet.actionRef, undefined, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, tempBullet, actionLabel);
             }
           }
           //Draw bullet
@@ -288,7 +256,6 @@
       }
     }
   };
-  
   
   //------------- END COMMANDS ZONE -----------
   //--------------- METHODS ZONE --------------
@@ -457,35 +424,39 @@
       position: {
         now: undefined,
       },
-      commands: undefined,
       wait: {},
       flag: randomString(),
     };
     //Check for actionRef
     if (actionCommands.actionRef) {
       tempBullet.actionRef = actionCommands.actionRef;
+      tempBullet.commands = [{
+        location: 0,
+        times: 1,
+        actions: flag[name].actions.ref[actionCommands.actionRef],
+        label: actionLabel
+      }];
     }
     //Check for movement
     if (actionCommands.movement) {
       tempBullet.movement = actionCommands.movement;
     } else {
-      //Check for position start and end
-      if (actionCommands.position.start) {
-        tempBullet.position.start = actionCommands.position.start;
+      //Check for position now and end
+      if (actionCommands.position.now) {
+        tempBullet.position.now = actionCommands.position.now;
       } else {
-        tempBullet.position.start = flag[name].configs.position();
+        tempBullet.position.now = flag[name].configs.position();
       }
-      tempBullet.position.now = actionCommands.position.start;
       if (actionCommands.position.end) {
         tempBullet.position.end = actionCommands.position.end;
-        tempBullet.direction.value = getAngle(angleAtoB(tempBullet.position.start, tempBullet.position.end));
+        tempBullet.direction.value = getAngle(angleAtoB(tempBullet.position.now, tempBullet.position.end));
       } else if (actionCommands.direction) {
         if (!tempBullet.direction) {
           tempBullet.direction = {};
         }
         switch (actionCommands.direction.type) {
           case "aim": {
-            tempBullet.direction.value = getAngle(angleAtoB(tempBullet.position.start, flag[name].configs.target()));
+            tempBullet.direction.value = getAngle(angleAtoB(tempBullet.position.now, flag[name].configs.target()));
           }
           break;
           case "absolute": {
@@ -678,12 +649,202 @@
       }
     }
     temp[name].bullets[mainActionLabel][actionCommands.label].push(tempBullet);
+    tempBullet = temp[name].bullets[mainActionLabel][actionCommands.label][temp[name].bullets[mainActionLabel][actionCommands.label].length - 1];
+    if (tempBullet.actionRef) {
+      tempBullet = drawBullet(tempBullet);
+      methods.actionRef(tempBullet.actionRef, undefined, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, tempBullet, mainActionLabel);
+    }
   };
   methods.vanish = function(actionLabel, actionCommands) {
     
   };
-  methods.change = function(actionLabel, actionCommands) {
-    
+  methods.change = function(actionLabel, actionCommands, actionData, tempCommands, tempBullet, mainActionLabel) {
+    if (flag[name].actions.ref[actionLabel]) {
+      //Set tempBullet change
+      if (!tempBullet.change) {
+        tempBullet.change = {};
+      }
+      //Check for object data
+      if (actionCommands.movement) {
+        tempBullet.movement = actionCommands.movement;
+      } else {
+        //Current position
+        if (actionCommands.position.now) {
+          tempBullet.position.now = actionCommands.position.now;
+        }
+        //End position
+        if (actionCommands.position.end) {
+          //Check for value and velocity error
+          if (actionCommands.position.end && tempBullet.direction.velocity) {
+            throw new Error("End position value can't use when velocity is defined");
+          }
+          //Set change direction object
+          if (!tempBullet.change.direction) {
+            tempBullet.change.direction = {};
+          }
+          //Check for change data
+          tempBullet.change.direction.times = actionCommands.direction.times || 1;
+          tempBullet.change.direction.value = getAngle(angleAtoB(tempBullet.position.now, actionCommands.position.end);
+          tempBullet.change.direction.type = "plus";
+          tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
+          tempBullet.change.position.end = actionCommands.position.end;
+        } else if (actionCommands.direction) {
+          //Set change direction data
+          if (!tempBullet.change.direction) {
+            tempBullet.change.direction = {};
+          }
+          //Check for value and velocity error
+          if (actionCommands.direction.type === "plus" && tempBullet.direction.velocity) {
+            throw new Error("Plus type can't use when velocity is defined");
+          }
+          //Check for value
+          tempBullet.change.direction.value = actionCommands.direction.value || 1;
+          //Check for type
+          if (actionCommands.direction.type) {
+            tempBullet.change.direction.type = actionCommands.direction.type;
+          } else if (!actionCommands.direction.velocity) {
+            tempBullet.change.direction.type = "plus";
+          } else {
+            tempBullet.change.direction.type = "multiply";
+          }
+          //Check for times
+          tempBullet.change.direction.times = actionCommands.direction.times || 1;
+          //Calculate change
+          if (tempBullet.change.direction.type === "plus") {
+            tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
+          } else if (tempBullet.change.direction.type === "multiply") {
+            tempBullet.change.direction.change = tempBullet.change.direction.value;
+          }
+          //Check for value velocity
+          tempBullet.change.direction.velocity.value = actionCommands.direction.velocity.value || 1;
+          //Check for type velocity
+          if (actionCommands.direction.velocity.type && actionCommands.direction.velocity.value) {
+            tempBullet.change.direction.velocity.type = actionCommands.direction.velocity.value;
+          } else if (actionCommands.direction.velocity.value) {
+            tempBullet.change.direction.velocity.type = "plus";
+          } else {
+            tempBullet.change.direction.velocity.type = "multiply";
+          }
+          //Check for times velocity
+          tempBullet.change.direction.velocity.times = actionCommands.direction.velocity.times || 1;
+          //Check for velocity range
+          tempBullet.direction.velocity.range = actionCommands.direction.velocity.range || tempBullet.direction.velocity.range;
+          //Calculate change
+          if (tempBullet.change.direction.velocity.type === "plus") {
+            tempBullet.change.direction.velocity.change = (tempBullet.change.direction.velocity.value - tempBullet.direction.velocity.value) / tempBullet.change.direction.velocity.times;
+          } else if (tempBullet.change.direction.velocity.type === "multiply") {
+            tempBullet.change.direction.velocity.change = tempBullet.change.direction.velocity.value;
+          }
+        }
+        //Speed
+        if (actionCommands.speed) {
+          //Set change speed data
+          if (!tempBullet.change.speed) {
+            tempBullet.change.speed = {};
+          }
+          //Horizontal speed
+          if (actionCommands.speed.horizontal) {
+            //Set change horizontal speed data
+            if (!tempBullet.change.speed.horizontal) {
+              tempBullet.change.speed.horizontal = {};
+            }
+            //Check for value and velocity error
+            if (actionCommands.speed.horizontal.type === "plus" && tempBullet.speed.velocity.horizontal) {
+              throw new Error("Plus type can't use when velocity is defined");
+            }
+            //Check for value
+            tempBullet.change.speed.horizontal.value = actionCommands.speed.horizontal.value || 1;
+            //Check for type
+            if (actionCommands.speed.horizontal.type) {
+              tempBullet.change.speed.horizontal.type = actionCommands.speed.horizontal.type;
+            } else if (!actionCommands.speed.horizontal.velocity) {
+              tempBullet.change.speed.horizontal.type = "plus";
+            } else {
+              tempBullet.change.speed.horizontal.type = "multiply";
+            }
+            //Check for times
+            tempBullet.change.speed.horizontal.times = actionCommands.speed.horizontal.times || 1;
+            //Calculate change
+            if (tempBullet.change.speed.horizontal.type === "plus") {
+              tempBullet.change.speed.horizontal.change = (tempBullet.change.speed.horizontal.value - tempBullet.speed.horizontal.value) / tempBullet.change.speed.horizontal.times;
+            } else if (tempBullet.change.speed.horizontal.type === "multiply") {
+              tempBullet.change.speed.horizontal.change = tempBullet.change.speed.horizontal.value;
+            }
+            //Check for value velocity
+            tempBullet.change.speed.velocity.horizontal.value = actionCommands.speed.velocity.horizontal.value || 1;
+            //Check for type velocity
+            if (actionCommands.speed.velocity.horizontal.type && actionCommands.speed.velocity.horizontal.value) {
+              tempBullet.change.speed.velocity.horizontal.type = actionCommands.speed.velocity.horizontal.value;
+            } else if (actionCommands.speed.velocity.horizontal.value) {
+              tempBullet.change.speed.velocity.horizontal.type = "plus";
+            } else {
+              tempBullet.change.speed.velocity.horizontal.type = "multiply";
+            }
+            //Check for times velocity
+            tempBullet.change.speed.velocity.horizontal.times = actionCommands.speed.velocity.horizontal.times || 1;
+            //Check for velocity range
+            tempBullet.speed.velocity.horizontal.range = actionCommands.speed.velocity.horizontal.range || tempBullet.speed.velocity.horizontal.range;
+            //Calculate change
+            if (tempBullet.change.speed.velocity.horizontal.type === "plus") {
+              tempBullet.change.speed.velocity.horizontal.change = (tempBullet.change.speed.velocity.horizontal.value - tempBullet.speed.velocity.horizontal.value) / tempBullet.change.speed.velocity.horizontal.times;
+            } else if (tempBullet.change.speed.velocity.horizontal.type === "multiply") {
+              tempBullet.change.speed.velocity.horizontal.change = tempBullet.change.speed.velocity.horizontal.value;
+            }
+          }
+          //Vertical speed
+          if (actionCommands.speed.vertical) {
+            //Set change vertical speed data
+            if (!tempBullet.change.speed.vertical) {
+              tempBullet.change.speed.vertical = {};
+            }
+            //Check for value and velocity error
+            if (actionCommands.speed.vertical.type === "plus" && tempBullet.speed.velocity.vertical) {
+              throw new Error("Plus type can't use when velocity is defined");
+            }
+            //Check for value
+            tempBullet.change.speed.vertical.value = actionCommands.speed.vertical.value || 1;
+            //Check for type
+            if (actionCommands.speed.vertical.type) {
+              tempBullet.change.speed.vertical.type = actionCommands.speed.vertical.type;
+            } else if (!actionCommands.speed.vertical.velocity) {
+              tempBullet.change.speed.vertical.type = "plus";
+            } else {
+              tempBullet.change.speed.vertical.type = "multiply";
+            }
+            //Check for times
+            tempBullet.change.speed.vertical.times = actionCommands.speed.vertical.times || 1;
+            //Calculate change
+            if (tempBullet.change.speed.vertical.type === "plus") {
+              tempBullet.change.speed.vertical.change = (tempBullet.change.speed.vertical.value - tempBullet.speed.vertical.value) / tempBullet.change.speed.vertical.times;
+            } else if (tempBullet.change.speed.vertical.type === "multiply") {
+              tempBullet.change.speed.vertical.change = tempBullet.change.speed.vertical.value;
+            }
+            //Check for value velocity
+            tempBullet.change.speed.velocity.vertical.value = actionCommands.speed.velocity.vertical.value || 1;
+            //Check for type velocity
+            if (actionCommands.speed.velocity.vertical.type && actionCommands.speed.velocity.vertical.value) {
+              tempBullet.change.speed.velocity.vertical.type = actionCommands.speed.velocity.vertical.value;
+            } else if (actionCommands.speed.velocity.vertical.value) {
+              tempBullet.change.speed.velocity.vertical.type = "plus";
+            } else {
+              tempBullet.change.speed.velocity.vertical.type = "multiply";
+            }
+            //Check for times velocity
+            tempBullet.change.speed.velocity.vertical.times = actionCommands.speed.velocity.vertical.times || 1;
+            //Check for velocity range
+            tempBullet.speed.velocity.vertical.range = actionCommands.speed.velocity.vertical.range || tempBullet.speed.velocity.vertical.range;
+            //Calculate change
+            if (tempBullet.change.speed.velocity.vertical.type === "plus") {
+              tempBullet.change.speed.velocity.vertical.change = (tempBullet.change.speed.velocity.vertical.value - tempBullet.speed.velocity.vertical.value) / tempBullet.change.speed.velocity.vertical.times;
+            } else if (tempBullet.change.speed.velocity.vertical.type === "multiply") {
+              tempBullet.change.speed.velocity.vertical.change = tempBullet.change.speed.velocity.vertical.value;
+            }
+          }
+        }
+      }
+    } else {
+      throw new Error("Change must be called in not fire actions");
+    }
   };
   methods.func = function(actionLabel, actionCommands) {
     actionCommands.callback();
@@ -851,6 +1012,120 @@
   //------------- END METHODS ZONE ------------
   //------------ OTHER STUFF ZONE -------------
   //Helper function
+  function drawBullet(tempBullet) {
+    //Check for change data
+    if (tempBullet.change) {
+      //Check for direction
+      if (tempBullet.change.direction) {
+        //Check for times data if larger than 0
+        if (tempBullet.change.direction.times > 0) {
+          //Check for type
+          if (tempBullet.change.direction.type === "plus") {
+            tempBullet.direction.value += tempBullet.change.direction.change;
+          } else if (tempBullet.change.direction.type === "multiply") {
+            tempBullet.direction.value *= tempBullet.change.direction.change;
+          }
+          //Minus times to 1
+          tempBullet.change.direction.times --;
+        }
+        //Check for direction velocity
+        if (tempBullet.change.direction.velocity.times > 0) {
+          //Check for type
+          if (tempBullet.change.direction.velocity.type === "plus") {
+            tempBullet.direction.velocity.value += tempBullet.change.direction.velocity.change;
+          } else if (tempBullet.change.direction.velocity.type === "multiply") {
+            tempBullet.direction.velocity.value *= tempBullet.change.direction.velocity.change;
+          }
+          //Minus times to 1
+          tempBullet.change.direction.velocity.times --;
+        }
+      }
+      //Check for speed
+      if (tempBullet.change.speed) {
+        //Check for times data if larger than 0
+        if (tempBullet.change.speed.horizontal.times > 0) {
+          //Check for type
+          if (tempBullet.change.speed.horizontal.type === "plus") {
+            tempBullet.speed.horizontal += tempBullet.change.speed.horizontal.change;
+          } else if (tempBullet.change.speed.horizontal.type === "multiply") {
+            tempBullet.speed.horizontal *= tempBullet.change.speed.horizontal.change;
+          }
+          //Minus times to 1
+          tempBullet.change.speed.horizontal.times --;
+        }
+        //Check for times data if larger than 0
+        if (tempBullet.change.speed.vertical.times > 0) {
+          //Check for type
+          if (tempBullet.change.speed.vertical.type === "plus") {
+            tempBullet.speed.vertical += tempBullet.change.speed.vertical.change;
+          } else if (tempBullet.change.speed.vertical.type === "multiply") {
+            tempBullet.speed.vertical *= tempBullet.change.speed.vertical.change;
+          }
+          //Minus times to 1
+          tempBullet.change.speed.vertical.times --;
+        }
+        //Check for times data if larger than 0
+        if (tempBullet.change.speed.velocity.horizontal.times > 0) {
+          //Check for type
+          if (tempBullet.change.speed.velocity.horizontal.type === "plus") {
+            tempBullet.speed.velocity.horizontal.value += tempBullet.change.speed.velocity.horizontal.change;
+          } else if (tempBullet.change.speed.velocity.horizontal.type === "multiply") {
+            tempBullet.speed.velocity.horizontal.value *= tempBullet.change.speed.velocity.horizontal.change;
+          }
+          //Minus times to 1
+          tempBullet.change.speed.velocity.horizontal.times --;
+        }
+        //Check for times data if larger than 0
+        if (tempBullet.change.speed.velocity.vertical.times > 0) {
+          //Check for type
+          if (tempBullet.change.speed.velocity.vertical.type === "plus") {
+            tempBullet.speed.velocity.vertical.value += tempBullet.change.speed.velocity.vertical.change;
+          } else if (tempBullet.change.speed.velocity.vertical.type === "multiply") {
+            tempBullet.speed.velocity.vertical.value *= tempBullet.change.speed.velocity.vertical.change;
+          }
+          //Minus times to 1
+          tempBullet.change.speed.velocity.vertical.times --;
+        }
+      }
+    }
+    //Check movement data
+    if (typeof tempBullet.movement === "function") {
+      tempBullet.position.now = tempBullet.movement();
+    } else {
+      //Main x movement
+      tempBullet.position.now[0] = Math.sin(tempBullet.direction.value) * tempBullet.speed.horizontal + tempBullet.position.now[0];
+      //Main y movement
+      tempBullet.position.now[1] = Math.cos(tempBullet.direction.value) * tempBullet.speed.vertical + tempBullet.position.now[1];
+      //Check for direction velocity
+      if (tempBullet.direction.velocity) {
+        //Check for range
+        if (tempBullet.direction.velocity.range[0] <= tempBullet.direction.value && tempBullet.direction.velocity.range[1] >= tempBullet.direction.value) {
+          tempBullet.direction.value += tempBullet.direction.velocity.value;
+        } else if (tempBullet.direction.velocity.range[0] > tempBullet.direction.value || tempBullet.direction.velocity.range[1] < tempBullet.direction.value) {
+          tempBullet.direction.value = tempBullet.direction.velocity.value;
+        }
+      }
+      //Check for speed velocity
+      if (tempBullet.speed.velocity) {
+        //Check for range
+        if (tempBullet.speed.velocity.horizontal) {
+          if (tempBullet.speed.velocity.horizontal.range[0] <= tempBullet.speed.horizontal && tempBullet.speed.velocity.horizontal.range[1] >= tempBullet.speed.horizontal) {
+            tempBullet.speed.horizontal += tempBullet.speed.velocity.horizontal.value;
+          } else if (tempBullet.speed.velocity.horizontal.range[0] > tempBullet.speed.horizontal || tempBullet.speed.velocity.horizontal.range[1] < tempBullet.speed.horizontal) {
+            tempBullet.speed.horizontal = tempBullet.speed.velocity.horizontal.value;
+          }
+        }
+        if (tempBullet.speed.velocity.vertical) {
+          if (tempBullet.speed.velocity.vertical.range[0] <= tempBullet.speed.vertical && tempBullet.speed.velocity.vertical.range[1] >= tempBullet.speed.vertical) {
+            tempBullet.speed.vertical += tempBullet.speed.velocity.vertical.value;
+          } else if (tempBullet.speed.velocity.vertical.range[0] > tempBullet.speed.vertical || tempBullet.speed.velocity.vertical.range[1] < tempBullet.speed.vertical) {
+            tempBullet.speed.vertical = tempBullet.speed.velocity.vertical.value;
+          }
+        }
+      }
+    }
+    return tempBullet;
+  }
   function randomString() {
     return (Math.random() * 1e36).toString(36);
   }
