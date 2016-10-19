@@ -26,6 +26,8 @@
   SOFTWARE.
   */
   
+  //TODO: fix getAngle to process raw direction data
+  
   //Important variable
   var flag = {}, //private holder
       commands = {}, //commands holder
@@ -465,18 +467,18 @@
           break;
           case "sequence": {
             if (!temp[name].fire[actionLabel][actionCommands.label].direction || typeof temp[name].fire[actionLabel][actionCommands.label].direction !== "number") {
-              temp[name].fire[actionLabel][actionCommands.label].direction = actionCommands.direction.value;
+              temp[name].fire[actionLabel][actionCommands.label].direction = getAngle(actionCommands.direction.value);
             } else if (typeof temp[name].fire[actionLabel][actionCommands.label].direction === "number") {
-              temp[name].fire[actionLabel][actionCommands.label].direction += actionCommands.direction.value;
+              temp[name].fire[actionLabel][actionCommands.label].direction += getAngle(actionCommands.direction.value);
             }
-            tempBullet.direction.value = temp[name].fire[actionLabel][actionCommands.label].direction;
+            tempBullet.direction.value = getAngle(temp[name].fire[actionLabel][actionCommands.label].direction);
           }
           break;
           case "relative": {
             //Check if is ref
             if (flag[name].actions.ref[actionLabel]) {
-              tempBullet.direction.value = actionCommands.direction.value;
-              tempBullet.direction.value += tempBulletInput.direction.value;
+              tempBullet.direction.value = getAngle(actionCommands.direction.value);
+              tempBullet.direction.value += getAngle(tempBulletInput.direction.value);
             } else {
               throw new Error("Relative must be use in actionRef");
             }
@@ -495,7 +497,7 @@
             tempBullet.direction.velocity.range = [];
           }
           if (typeof actionCommands.direction.velocity.value === "number") {
-            tempBullet.direction.velocity.value = actionCommands.direction.velocity.value;
+            tempBullet.direction.velocity.value = getAngle(actionCommands.direction.velocity.value);
           } else {
             tempBullet.direction.velocity.value = 0;
           }
@@ -503,12 +505,12 @@
             //Check if range is out of bound
             if (actionCommands.direction.velocity.range[0] > tempBullet.direction.value || actionCommands.direction.velocity.range[1] < tempBullet.direction.value) {
               if (actionCommands.direction.velocity.range[0] > tempBullet.direction.value) {
-                tempBullet.direction.velocity.range[0] = tempBullet.direction.value;
+                tempBullet.direction.velocity.range[0] = getAngle(tempBullet.direction.value);
               } else {
                 tempBullet.direction.velocity.range[0] = actionCommands.direction.velocity.range[0];
               }
-              if (actionCommands.direction.velocity.range[1] < tempBullet.direction.value) {
-                tempBullet.direction.velocity.range[1] = tempBullet.direction.value;
+              if (actionCommands.direction.velocity.range[1] < getAngle(tempBullet.direction.value)) {
+                tempBullet.direction.velocity.range[1] = getAngle(tempBullet.direction.value);
               } else {
                 tempBullet.direction.velocity.range[1] = actionCommands.direction.velocity.range[1];
               }
@@ -525,7 +527,7 @@
       if (actionCommands.speed) {
         switch (actionCommands.speed.horizontal.type) {
           case "absolute": {
-            tempBullet.speed.horizontal.value = actionCommands.speed.horizontal.value;
+            tempBullet.speed.horizontal = actionCommands.speed.horizontal.value;
           }
           break;
           case "sequence": {
@@ -534,14 +536,14 @@
             } else if (typeof temp[name].fire[actionLabel][actionCommands.label].speed.horizontal === "number") {
               temp[name].fire[actionLabel][actionCommands.label].speed.horizontal += actionCommands.speed.horizontal.value;
             }
-            tempBullet.speed.horizontal.value = temp[name].fire[actionLabel][actionCommands.label].speed.horizontal;
+            tempBullet.speed.horizontal = temp[name].fire[actionLabel][actionCommands.label].speed.horizontal;
           }
           break;
           case "relative": {
             //Check if is ref
             if (flag[name].actions.ref[actionLabel]) {
-              tempBullet.speed.horizontal.value = actionCommands.speed.horizontal.value;
-              tempBullet.speed.horizontal.value += tempBulletInput.speed.horizontal.value;
+              tempBullet.speed.horizontal = actionCommands.speed.horizontal.value;
+              tempBullet.speed.horizontal += tempBulletInput.speed.horizontal.value;
             } else {
               throw new Error("Relative must be use in actionRef");
             }
@@ -553,7 +555,7 @@
         }
         switch (actionCommands.speed.vertical.type) {
           case "absolute": {
-            tempBullet.speed.vertical.value = actionCommands.speed.vertical.value;
+            tempBullet.speed.vertical = actionCommands.speed.vertical.value;
           }
           break;
           case "sequence": {
@@ -562,14 +564,14 @@
             } else if (typeof temp[name].fire[actionLabel][actionCommands.label].speed.vertical === "number") {
               temp[name].fire[actionLabel][actionCommands.label].speed.vertical += actionCommands.speed.vertical.value;
             }
-            tempBullet.speed.vertical.value = temp[name].fire[actionLabel][actionCommands.label].speed.vertical;
+            tempBullet.speed.vertical = temp[name].fire[actionLabel][actionCommands.label].speed.vertical;
           }
           break;
           case "relative": {
             //Check if is ref
             if (flag[name].actions.ref[actionLabel]) {
-              tempBullet.speed.vertical.value = actionCommands.speed.vertical.value;
-              tempBullet.speed.vertical.value += tempBulletInput.speed.vertical.value;
+              tempBullet.speed.vertical = actionCommands.speed.vertical.value;
+              tempBullet.speed.vertical += tempBulletInput.speed.vertical.value;
             } else {
               throw new Error("Relative must be use in actionRef");
             }
@@ -684,9 +686,9 @@
           }
           //Check for change data
           tempBullet.change.direction.times = actionCommands.direction.times || 1;
-          tempBullet.change.direction.value = getAngle(angleAtoB(tempBullet.position.now, actionCommands.position.end);
+          tempBullet.change.direction.value = getAngle(angleAtoB(tempBullet.position.now, actionCommands.position.end));
           tempBullet.change.direction.type = "plus";
-          tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
+          tempBullet.change.direction.change = getAngle((tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times);
           tempBullet.change.position.end = actionCommands.position.end;
         } else if (actionCommands.direction) {
           //Set change direction data
@@ -698,7 +700,7 @@
             throw new Error("Plus type can't use when velocity is defined");
           }
           //Check for value
-          tempBullet.change.direction.value = actionCommands.direction.value || 1;
+          tempBullet.change.direction.value = getAngle(actionCommands.direction.value) || 0;
           //Check for type
           if (actionCommands.direction.type) {
             tempBullet.change.direction.type = actionCommands.direction.type;
@@ -711,15 +713,15 @@
           tempBullet.change.direction.times = actionCommands.direction.times || 1;
           //Calculate change
           if (tempBullet.change.direction.type === "plus") {
-            tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
+            tempBullet.change.direction.change = getAngle((tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times);
           } else if (tempBullet.change.direction.type === "multiply") {
-            tempBullet.change.direction.change = tempBullet.change.direction.value;
+            tempBullet.change.direction.change = getAngle(tempBullet.change.direction.value);
           }
           //Check for value velocity
-          tempBullet.change.direction.velocity.value = actionCommands.direction.velocity.value || 1;
+          tempBullet.change.direction.velocity.value = getAngle(actionCommands.direction.velocity.value) || 1;
           //Check for type velocity
-          if (actionCommands.direction.velocity.type && actionCommands.direction.velocity.value) {
-            tempBullet.change.direction.velocity.type = actionCommands.direction.velocity.value;
+          if (actionCommands.direction.velocity.type && getAngle(actionCommands.direction.velocity.value)) {
+            tempBullet.change.direction.velocity.type = getAngle(actionCommands.direction.velocity.value);
           } else if (actionCommands.direction.velocity.value) {
             tempBullet.change.direction.velocity.type = "plus";
           } else {
@@ -731,9 +733,9 @@
           tempBullet.direction.velocity.range = actionCommands.direction.velocity.range || tempBullet.direction.velocity.range;
           //Calculate change
           if (tempBullet.change.direction.velocity.type === "plus") {
-            tempBullet.change.direction.velocity.change = (tempBullet.change.direction.velocity.value - tempBullet.direction.velocity.value) / tempBullet.change.direction.velocity.times;
+            tempBullet.change.direction.velocity.change = getAngle((tempBullet.change.direction.velocity.value - tempBullet.direction.velocity.value) / tempBullet.change.direction.velocity.times);
           } else if (tempBullet.change.direction.velocity.type === "multiply") {
-            tempBullet.change.direction.velocity.change = tempBullet.change.direction.velocity.value;
+            tempBullet.change.direction.velocity.change = getAngle(tempBullet.change.direction.velocity.value);
           }
         }
         //Speed
@@ -1022,8 +1024,10 @@
           //Check for type
           if (tempBullet.change.direction.type === "plus") {
             tempBullet.direction.value += tempBullet.change.direction.change;
+            tempBullet.direction.value = getAngle(tempBullet.direction.value);
           } else if (tempBullet.change.direction.type === "multiply") {
             tempBullet.direction.value *= tempBullet.change.direction.change;
+            tempBullet.direction.value = getAngle(tempBullet.direction.value);
           }
           //Minus times to 1
           tempBullet.change.direction.times --;
@@ -1032,9 +1036,9 @@
         if (tempBullet.change.direction.velocity.times > 0) {
           //Check for type
           if (tempBullet.change.direction.velocity.type === "plus") {
-            tempBullet.direction.velocity.value += tempBullet.change.direction.velocity.change;
+            tempBullet.direction.velocity.value += getAngle(tempBullet.change.direction.velocity.change);
           } else if (tempBullet.change.direction.velocity.type === "multiply") {
-            tempBullet.direction.velocity.value *= tempBullet.change.direction.velocity.change;
+            tempBullet.direction.velocity.value *= getAngle(tempBullet.change.direction.velocity.change);
           }
           //Minus times to 1
           tempBullet.change.direction.velocity.times --;
@@ -1093,16 +1097,16 @@
       tempBullet.position.now = tempBullet.movement();
     } else {
       //Main x movement
-      tempBullet.position.now[0] = Math.sin(tempBullet.direction.value) * tempBullet.speed.horizontal + tempBullet.position.now[0];
+      tempBullet.position.now[0] = Math.sin(getAngle(tempBullet.direction.value)) * tempBullet.speed.horizontal + tempBullet.position.now[0];
       //Main y movement
-      tempBullet.position.now[1] = Math.cos(tempBullet.direction.value) * tempBullet.speed.vertical + tempBullet.position.now[1];
+      tempBullet.position.now[1] = Math.cos(getAngle(tempBullet.direction.value)) * tempBullet.speed.vertical + tempBullet.position.now[1];
       //Check for direction velocity
       if (tempBullet.direction.velocity) {
         //Check for range
-        if (tempBullet.direction.velocity.range[0] <= tempBullet.direction.value && tempBullet.direction.velocity.range[1] >= tempBullet.direction.value) {
-          tempBullet.direction.value += tempBullet.direction.velocity.value;
-        } else if (tempBullet.direction.velocity.range[0] > tempBullet.direction.value || tempBullet.direction.velocity.range[1] < tempBullet.direction.value) {
-          tempBullet.direction.value = tempBullet.direction.velocity.value;
+        if (tempBullet.direction.velocity.range[0] <= getAngle(tempBullet.direction.value) && tempBullet.direction.velocity.range[1] >= getAngle(tempBullet.direction.value)) {
+          tempBullet.direction.value += getAngle(tempBullet.direction.velocity.value);
+        } else if (tempBullet.direction.velocity.range[0] > getAngle(tempBullet.direction.value) || tempBullet.direction.velocity.range[1] < getAngle(tempBullet.direction.value)) {
+          tempBullet.direction.value = getAngle(tempBullet.direction.velocity.value);
         }
       }
       //Check for speed velocity
