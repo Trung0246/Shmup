@@ -15,11 +15,13 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Nothing, this library is currently being write.
 
 ## Changelog:
-* Added *change* command with *actionRef* support.
-* Fixed bugs.
+* Fixed getAngle bugs.
+* Fixed sequence bugs.
+* Fixed direction bugs.
+* Fixed change bugs.
 
 ## TODO list:
 * Add *vanish* command with *actionRef* support.
-* Fix direction and speed bug.
+* Fix velocity bugs.
 * Compress cloned methods to one methods.
 * Remove error handling.
