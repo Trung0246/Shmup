@@ -1,8 +1,8 @@
 (function(window) {
   "use strict";
-  var VERSION = "1.0.4";
+  var VERSION = "1.0.5";
   
-  //TODO: change velocity data to make it work
+  //TODO: fix aim error
   
   /*
   MIT License
@@ -28,13 +28,12 @@
   SOFTWARE.
   */
   
-  //TODO: fix getAngle to process raw direction data
-  
   //Important variable
   var flag = {}, //private holder
       commands = {}, //commands holder
       methods = {}, //methods holder
-      temp = {}; //temp data holder
+      temp = {}, //temp data holder
+      shot = {}; //shot data holder
   
   //Junk variable, do not touch
   var name, //Class name
@@ -210,7 +209,7 @@
       temp[name].isFiring[actionLabel] = true;
     }
     if (flag[name].actions.fire[actionLabel]) {
-      methods.actions(actionLabel, undefined, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel]);
+      methods.actions(actionLabel, actionLabel, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel], undefined, undefined);
     } else {
       throw new Error("Undefined actions of " + actionLabel);
     }
@@ -229,15 +228,24 @@
             temp[name].timeOut[actionLabel].times = undefined;
             temp[name].wait.fire[actionLabel][temp[name].timeOut[actionLabel].label].done = true;
           }
-          methods.actions(actionLabel, undefined, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel]);
+          methods.actions(actionLabel, actionLabel, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel], undefined, undefined);
         }
       }
       //Draw bullet
-      for (var bulletLabel in temp[name].bullets[actionLabel]) {
-        for (var bulletCount = 0; bulletCount < temp[name].bullets[actionLabel][bulletLabel].length; bulletCount ++) {
-          var tempBullet = temp[name].bullets[actionLabel][bulletLabel][bulletCount];
+      for (var fireLabel in temp[name].bullets[actionLabel]) {
+        //var bulletCount = temp[name].bullets[actionLabel][fireLabel].length;
+        var bulletGroup = temp[name].bullets[actionLabel][fireLabel];
+        /*(function() {
+          while (bulletCount --) {
+            
+          }
+        })();*/
+        //LOOP FOWARD, NOT BACKWARD
+        //Main bullet update group
+        for (var bulletCount = 0; bulletCount < temp[name].bullets[actionLabel][fireLabel].length; bulletCount ++) {
+          var tempBullet = temp[name].bullets[actionLabel][fireLabel][bulletCount];
           //process draw bullet data
-          tempBullet = drawBullet(tempBullet);
+          tempBullet = shot[flag[name].configs.shot[tempBullet.type].type].draw(tempBullet);
           //Process actionRef
           if (tempBullet.actionRef) {
             if (tempBullet.wait.times > 0) {
@@ -249,11 +257,41 @@
                 tempBullet.wait.times = undefined;
                 temp[name].wait.ref[tempBullet.actionRef][tempBullet.wait.label][tempBullet.flag].done = true;
               }
-              methods.actionRef(tempBullet.actionRef, undefined, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, tempBullet, actionLabel);
+              if (tempBullet.commands.length > 0) {
+                methods.actions(tempBullet.actionRef, actionLabel, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, undefined, tempBullet);
+              }
             }
           }
           //Draw bullet
           flag[name].configs.shot[tempBullet.type].draw(tempBullet);
+          //Callback bullet
+          if (flag[name].configs.shot[tempBullet.type].callback) {
+            var tempData = flag[name].configs.shot[tempBullet.type].callback(tempBullet.actionRef || actionLabel, actionLabel, (function() {
+              try {
+                return tempBullet.commands[tempBullet.commands.length - 1].actions;
+              } catch (error) {
+                return undefined;
+              }
+            })(), tempBullet.commands, undefined, tempBullet);
+            //Process return
+            switch (tempData) {
+              case "vanish": {
+                flag[name].configs.shot[tempBullet.type].vanish(bulletGroup[bulletCount]);
+                shot[flag[name].configs.shot[tempBullet.type].type].vanish(tempBullet, bulletCount, bulletGroup);
+                bulletCount --;
+              }
+              break;
+              //May add aptional feature here
+            }
+          }
+        }
+        //Remove all bullet that is null
+        var nullBulletCount = temp[name].bullets[actionLabel][fireLabel].length;
+        while (nullBulletCount --) {
+          if (bulletGroup[nullBulletCount] === null) {
+            bulletGroup.splice(nullBulletCount, 1);
+            nullBulletCount --;
+          }
         }
       }
     }
@@ -261,22 +299,34 @@
   
   //------------- END COMMANDS ZONE -----------
   //--------------- METHODS ZONE --------------
-  methods.actions = function(actionLabel, actionCommands, actionData, tempCommands) {
-    if (!tempCommands) {
-      tempCommands = [{
-        location: 0,
-        times: 1,
-        actions: actionData,
-        label: actionLabel
-      }];
+  methods.actions = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
+    var defaultCommands = [{
+      location: 0,
+      times: 1,
+      actions: actionData,
+      label: actionLabel
+    }];
+    if (actionLabel === mainActionLabel) {
+      if (!tempCommands) {
+        tempCommands = defaultCommands;
+      }
+    } else if (actionLabel !== mainActionLabel) {
+      if (!tempBullet.commands) {
+        tempBullet.commands = defaultCommands;
+        tempCommands = tempBullet.commands;
+      }
     }
     var tempData;
     (function mainLoop() {
       while (tempCommands[tempCommands.length - 1].times > 0) {
         while (tempCommands[tempCommands.length - 1].location < actionData.length) {
-          tempData = methods[actionData[tempCommands[tempCommands.length- 1].location].func](actionLabel, actionData[tempCommands[tempCommands.length- 1].location], actionData, tempCommands, undefined, actionLabel);
+          tempData = methods[actionData[tempCommands[tempCommands.length- 1].location].func](actionLabel, mainActionLabel, actionData, tempCommands, actionData[tempCommands[tempCommands.length- 1].location], tempBullet);
           if (typeof tempData === "string") {
             return;
+          } else if (typeof tempData === "object") {
+            if (tempData.actionRef) {
+              firstActionProcess(tempData, mainActionLabel);
+            }
           }
           tempCommands[tempCommands.length- 1].location ++;
         }
@@ -284,10 +334,11 @@
         tempCommands[tempCommands.length- 1].times --;
       }
       try {
-        temp[name].repeat.fire[actionLabel][tempCommands[tempCommands.length - 1].label].done = true;
         tempCommands.pop();
         if (tempCommands.length <= 1) {
-          temp[name].isFiring[actionLabel] = false;
+          if (actionLabel === mainActionLabel) {
+            temp[name].isFiring[actionLabel] = false;
+          }
           return;
         }
         actionData = tempCommands[tempCommands.length- 1].actions;
@@ -297,10 +348,20 @@
       }
     })();
     if (tempData === "repeat") {
-      methods.actions(actionLabel, actionCommands, tempCommands[tempCommands.length - 1].actions, tempCommands);
+      //methods.actions(actionLabel, actionCommands, tempCommands[tempCommands.length - 1].actions, tempCommands, tempBullet, mainActionLabel);
+      methods.actions(actionLabel, mainActionLabel, tempCommands[tempCommands.length - 1].actions, tempCommands, actionCommands, tempBullet);
     }
   };
-  methods.repeat = function(actionLabel, actionCommands, actionData, tempCommands) {
+  methods.repeat = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
+    var actionType;
+    if (actionLabel === mainActionLabel) {
+      actionType = temp[name].repeat.fire[actionLabel][actionCommands.label];
+    } else if (actionLabel !== mainActionLabel) {
+      if (!temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag]) {
+        temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag] = {};
+      }
+      actionType = temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag];
+    }
     //Check if label is defined
     if (!actionCommands.label) {
       actionCommands.label = randomString();
@@ -311,40 +372,7 @@
     tempCommands.push({
       actions: actionData[tempCommands[tempCommands.length- 1].location].actions,
       location: 0,
-      times: (function() {
-        if (temp[name].repeat.fire[actionLabel][actionCommands.label].done) {
-          //Check if in range
-          //Check if velocity exist
-          if (!actionCommands.velocity) {
-            actionCommands.velocity = 0;
-          } else {
-            //Check if range exist
-            if (!actionCommands.range) {
-              actionCommands.range = [actionCommands.times, actionCommands.times];
-            } else if (actionCommands.range) {
-              //Check if range is lower than times
-              if (actionCommands.range[0] > actionCommands.times) {
-                actionCommands.range[0] = actionCommands.times;
-              }
-              if (actionCommands.range[1] < actionCommands.times) {
-                actionCommands.range[1] = actionCommands.times;
-              }
-              //Process range
-              if (temp[name].repeat.fire[actionLabel][actionCommands.label].times >= actionCommands.range[0] && temp[name].repeat.fire[actionLabel][actionCommands.label].times <= actionCommands.range[1]) {
-                temp[name].repeat.fire[actionLabel][actionCommands.label].times += actionCommands.velocity;
-              }
-              if (temp[name].repeat.fire[actionLabel][actionCommands.label].times < actionCommands.range[0]) {
-                temp[name].repeat.fire[actionLabel][actionCommands.label].times = actionCommands.range[0];
-              } else if (temp[name].repeat.fire[actionLabel][actionCommands.label].times > actionCommands.range[1]) {
-                temp[name].repeat.fire[actionLabel][actionCommands.label].times = actionCommands.range[1];
-              }
-            }
-          }
-        } else {
-          temp[name].repeat.fire[actionLabel][actionCommands.label].times = actionCommands.times;
-        }
-        return temp[name].repeat.fire[actionLabel][actionCommands.label].times;
-      })(),//,
+      times: actionCommands.times,
       label: actionCommands.label || (function() {
         var tempString = randomString();
         actionCommands.label = tempString;
@@ -354,848 +382,428 @@
     tempCommands[tempCommands.length - 2].location ++;
     return "repeat";
   };
-  methods.wait = function(actionLabel, actionCommands, actionData, tempCommands) {
+  methods.wait = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
+    var actionType;
     //Check if label is defined
     if (!actionCommands.label) {
       actionCommands.label = randomString();
     }
-    //Set wait label group
-    if (!temp[name].wait.fire[actionLabel][actionCommands.label]) {
-      temp[name].wait.fire[actionLabel][actionCommands.label] = {};
-    }
-    //Check if previous wait is called
-    if (temp[name].wait.fire[actionLabel][actionCommands.label].done) {
-      //Check if in range
-      //Check if velocity exist
-      if (!actionCommands.velocity) {
-        actionCommands.velocity = 0;
-      } else {
-        //Check if range exist
-        if (!actionCommands.range) {
-          actionCommands.range = [actionCommands.times, actionCommands.times];
-        } else if (actionCommands.range) {
-          //Check if range is lower than times
-          if (actionCommands.range[0] > actionCommands.times) {
-            actionCommands.range[0] = actionCommands.times;
-          }
-          if (actionCommands.range[1] < actionCommands.times) {
-            actionCommands.range[1] = actionCommands.times;
-          }
-          //Process range
-          if (temp[name].wait.fire[actionLabel][actionCommands.label].times >= actionCommands.range[0] && temp[name].wait.fire[actionLabel][actionCommands.label].times <= actionCommands.range[1]) {
-            temp[name].wait.fire[actionLabel][actionCommands.label].times += actionCommands.velocity;
-          }
-          if (temp[name].wait.fire[actionLabel][actionCommands.label].times < actionCommands.range[0]) {
-            temp[name].wait.fire[actionLabel][actionCommands.label].times = actionCommands.range[0];
-          } else if (temp[name].wait.fire[actionLabel][actionCommands.label].times > actionCommands.range[1]) {
-            temp[name].wait.fire[actionLabel][actionCommands.label].times = actionCommands.range[1];
-          }
-        }
+    if (actionLabel === mainActionLabel) {
+      //Set wait label group
+      if (!temp[name].wait.fire[actionLabel][actionCommands.label]) {
+        temp[name].wait.fire[actionLabel][actionCommands.label] = {};
       }
-    } else {
-      temp[name].wait.fire[actionLabel][actionCommands.label].times = actionCommands.times;
+      actionType = temp[name].wait.fire[actionLabel][actionCommands.label];
+    } else if (actionLabel !== mainActionLabel) {
+      if (!temp[name].wait.ref[actionLabel][actionCommands.label]) {
+        temp[name].wait.ref[actionLabel][actionCommands.label] = {};
+      }
+      if (!temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag]) {
+        temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag] = {};
+      }
+      actionType = temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag];
     }
-    temp[name].timeOut[actionLabel].label = actionCommands.label;
-    temp[name].timeOut[actionLabel].times = temp[name].wait.fire[actionLabel][actionCommands.label].times;
+    actionType.times = actionCommands.times;
+    if (actionLabel === mainActionLabel) {
+      temp[name].timeOut[actionLabel].label = actionCommands.label;
+      temp[name].timeOut[actionLabel].times = actionCommands.times;
+    } else if (actionLabel !== mainActionLabel) {
+      tempBullet.wait.label = actionCommands.label;
+      tempBullet.wait.times = actionType.times;
+    }
     tempCommands[tempCommands.length - 1].location ++;
     return "wait";
   };
-  methods.fire = function(actionLabel, actionCommands, actionData, tempCommands, tempBulletInput, mainActionLabel) {
-    //Set label
-    if (!actionCommands.label) {
-      actionCommands.label = randomString();
-    }
-    //Set bullet group
-    if (!temp[name].bullets[mainActionLabel][actionCommands.label]) {
-      temp[name].bullets[mainActionLabel][actionCommands.label] = [];
-    }
-    //Set fire group
-    if (!temp[name].fire[actionLabel][actionCommands.label]) {
-      temp[name].fire[actionLabel][actionCommands.label] = {
-        direction: undefined,
-        speed: {
-          horizontal: 0,
-          vertical: 0
-        }
-      };
-    }
-    //Create new bullet
-    var tempBullet = {
-      type: actionCommands.type,
-      label: actionCommands.label,
-      position: {
-        now: undefined,
-      },
-      wait: {},
-      flag: randomString(),
-    };
-    //Check for actionRef
-    if (actionCommands.actionRef) {
-      tempBullet.actionRef = actionCommands.actionRef;
-      tempBullet.commands = [{
-        location: 0,
-        times: 1,
-        actions: flag[name].actions.ref[actionCommands.actionRef],
-        label: actionLabel
-      }];
-    }
-    //Check for movement
-    if (actionCommands.movement) {
-      tempBullet.movement = actionCommands.movement;
-    } else {
-      //Check for position
-      if (!actionCommands.position) {
-        actionCommands.position = {};
-      }
-      //Check for position now and end
-      if (actionCommands.position.now) {
-        tempBullet.position.now = actionCommands.position.now;
-      } else {
-        tempBullet.position.now = flag[name].configs.position();
-      }
-      if (actionCommands.position.end) {
-        tempBullet.position.end = actionCommands.position.end;
-        tempBullet.direction.value = angleAtoB(tempBullet.position.now, tempBullet.position.end);
-      } else if (actionCommands.direction) {
-        if (!tempBullet.direction) {
-          tempBullet.direction = {};
-        }
-        switch (actionCommands.direction.type) {
-          case "aim": {
-            tempBullet.direction.value = angleAtoB(tempBullet.position.now, flag[name].configs.target()) + (actionCommands.direction.value || 0);
-          }
-          break;
-          case "absolute": {
-            tempBullet.direction.value = actionCommands.direction.value;
-          }
-          break;
-          case "sequence": {
-            if (!temp[name].fire[actionLabel][actionCommands.label].direction || typeof temp[name].fire[actionLabel][actionCommands.label].direction !== "number") {
-              temp[name].fire[actionLabel][actionCommands.label].direction = actionCommands.direction.value;
-            } else if (typeof temp[name].fire[actionLabel][actionCommands.label].direction === "number") {
-              temp[name].fire[actionLabel][actionCommands.label].direction += actionCommands.direction.value;
-            }
-            tempBullet.direction.value = temp[name].fire[actionLabel][actionCommands.label].direction;
-          }
-          break;
-          case "relative": {
-            //Check if is ref
-            if (flag[name].actions.ref[actionLabel]) {
-              tempBullet.direction.value = actionCommands.direction.value;
-              tempBullet.direction.value += tempBulletInput.direction.value;
-            } else {
-              throw new Error("Relative must be use in actionRef");
-            }
-          }
-          break;
-          default: {
-            tempBullet.direction.value = 0;
-          }
-        }
-        //Calculate velocity and put velocity tag
-        if (actionCommands.direction.velocity) {
-          if (!tempBullet.direction.velocity) {
-            tempBullet.direction.velocity = {};
-          }
-          if (!tempBullet.direction.velocity.range) {
-            tempBullet.direction.velocity.range = [];
-          }
-          if (typeof actionCommands.direction.velocity.value === "number") {
-            tempBullet.direction.velocity.value = actionCommands.direction.velocity.value;
-          } else {
-            tempBullet.direction.velocity.value = 0;
-          }
-          if (Array.isArray(actionCommands.direction.velocity.range)) {
-            //Check if range is out of bound
-            if (actionCommands.direction.velocity.range[0] > tempBullet.direction.value || actionCommands.direction.velocity.range[1] < tempBullet.direction.value) {
-              if (actionCommands.direction.velocity.range[0] > tempBullet.direction.value) {
-                tempBullet.direction.velocity.range[0] = tempBullet.direction.value;
-              } else {
-                tempBullet.direction.velocity.range[0] = actionCommands.direction.velocity.range[0];
-              }
-              if (actionCommands.direction.velocity.range[1] < tempBullet.direction.value) {
-                tempBullet.direction.velocity.range[1] = tempBullet.direction.value;
-              } else {
-                tempBullet.direction.velocity.range[1] = actionCommands.direction.velocity.range[1];
-              }
-            } else {
-              tempBullet.direction.velocity.range = actionCommands.direction.velocity.range;
-            }
-          } else {
-            tempBullet.direction.velocity.range = [tempBullet.direction.velocity.value, tempBullet.direction.velocity.value];
-          }
-        }
-      } else {
-        throw new Error("Invalid fire direction");
-      }
-      if (actionCommands.speed) {
-        //Set tempBulllet speed group
-        if (!tempBullet.speed) {
-          tempBullet.speed = {};
-        }
-        switch (actionCommands.speed.horizontal.type) {
-          case "absolute": {
-            tempBullet.speed.horizontal = actionCommands.speed.horizontal.value;
-          }
-          break;
-          case "sequence": {
-            if (!temp[name].fire[actionLabel][actionCommands.label].speed.horizontal || typeof temp[name].fire[actionLabel][actionCommands.label].speed.horizontal !== "number") {
-              temp[name].fire[actionLabel][actionCommands.label].speed.horizontal = actionCommands.speed.horizontal.value;
-            } else if (typeof temp[name].fire[actionLabel][actionCommands.label].speed.horizontal === "number") {
-              temp[name].fire[actionLabel][actionCommands.label].speed.horizontal += actionCommands.speed.horizontal.value;
-            }
-            tempBullet.speed.horizontal = temp[name].fire[actionLabel][actionCommands.label].speed.horizontal;
-          }
-          break;
-          case "relative": {
-            //Check if is ref
-            if (flag[name].actions.ref[actionLabel]) {
-              tempBullet.speed.horizontal = actionCommands.speed.horizontal.value;
-              tempBullet.speed.horizontal += tempBulletInput.speed.horizontal.value;
-            } else {
-              throw new Error("Relative must be use in actionRef");
-            }
-          }
-          break;
-          default: {
-            tempBullet.speed.horizontal = 1;
-          }
-        }
-        switch (actionCommands.speed.vertical.type) {
-          case "absolute": {
-            tempBullet.speed.vertical = actionCommands.speed.vertical.value;
-          }
-          break;
-          case "sequence": {
-            if (!temp[name].fire[actionLabel][actionCommands.label].speed.vertical || typeof temp[name].fire[actionLabel][actionCommands.label].speed.vertical !== "number") {
-              temp[name].fire[actionLabel][actionCommands.label].speed.vertical = actionCommands.speed.vertical.value;
-            } else if (typeof temp[name].fire[actionLabel][actionCommands.label].speed.vertical === "number") {
-              temp[name].fire[actionLabel][actionCommands.label].speed.vertical += actionCommands.speed.vertical.value;
-            }
-            tempBullet.speed.vertical = temp[name].fire[actionLabel][actionCommands.label].speed.vertical;
-          }
-          break;
-          case "relative": {
-            //Check if is ref
-            if (flag[name].actions.ref[actionLabel]) {
-              tempBullet.speed.vertical = actionCommands.speed.vertical.value;
-              tempBullet.speed.vertical += tempBulletInput.speed.vertical.value;
-            } else {
-              throw new Error("Relative must be use in actionRef");
-            }
-          }
-          break;
-          default: {
-            tempBullet.speed.vertical = 1;
-          }
-        }
-        if (actionCommands.speed.velocity) {
-          if (!tempBullet.speed.velocity) {
-            tempBullet.direction.velocity = {};
-          }
-          if (actionCommands.speed.velocity.horizontal) {
-            tempBullet.speed.velocity.horizontal = {};
-          }
-          if (!tempBullet.speed.velocity.horizontal.range) {
-            tempBullet.speed.velocity.horizontal.range = [];
-          }
-          if (typeof actionCommands.speed.velocity.horizontal.value === "number") {
-            tempBullet.speed.velocity.horizontal.value = actionCommands.speed.velocity.horizontal.value;
-          } else {
-            tempBullet.speed.velocity.horizontal.value = 0;
-          }
-          if (Array.isArray(actionCommands.speed.velocity.horizontal.range)) {
-            //Check if range is out of bound
-            if (actionCommands.speed.velocity.horizontal.range[0] > tempBullet.speed.horizontal || actionCommands.speed.velocity.horizontal.range[1] < tempBullet.speed.horizontal) {
-              if (actionCommands.speed.velocity.horizontal.range[0] > tempBullet.speed.horizontal) {
-                tempBullet.speed.velocity.horizontal.range[0] = tempBullet.speed.horizontal;
-              } else {
-                tempBullet.speed.velocity.horizontal.range[0] = actionCommands.speed.velocity.horizontal.range[0];
-              }
-              if (actionCommands.speed.velocity.horizontal.range[1] < tempBullet.speed.horizontal) {
-                tempBullet.speed.velocity.horizontal.range[1] = tempBullet.speed.horizontal;
-              } else {
-                tempBullet.speed.velocity.horizontal.range[1] = actionCommands.speed.velocity.horizontal.range[1];
-              }
-            } else {
-              tempBullet.speed.velocity.horizontal.range = actionCommands.speed.velocity.horizontal.range;
-            }
-          } else {
-            tempBullet.speed.velocity.horizontal.range = [tempBullet.speed.velocity.horizontal, tempBullet.speed.velocity.horizontal];
-          }
-          if (actionCommands.speed.velocity.vertical) {
-            tempBullet.speed.velocity.vertical = {};
-          }
-          if (!tempBullet.speed.velocity.vertical.range) {
-            tempBullet.speed.velocity.vertical.range = [];
-          }
-          if (typeof actionCommands.speed.velocity.vertical.value === "number") {
-            tempBullet.speed.velocity.vertical.value = actionCommands.speed.velocity.vertical.value;
-          } else {
-            tempBullet.speed.velocity.vertical.value = 0;
-          }
-          if (Array.isArray(actionCommands.speed.velocity.vertical.range)) {
-            //Check if range is out of bound
-            if (actionCommands.speed.velocity.vertical.range[0] > tempBullet.speed.vertical || actionCommands.speed.velocity.vertical.range[1] < tempBullet.speed.vertical) {
-              if (actionCommands.speed.velocity.vertical.range[0] > tempBullet.speed.vertical) {
-                tempBullet.speed.velocity.vertical.range[0] = tempBullet.speed.vertical;
-              } else {
-                tempBullet.speed.velocity.vertical.range[0] = actionCommands.speed.velocity.vertical.range[0];
-              }
-              if (actionCommands.speed.velocity.vertical.range[1] < tempBullet.speed.vertical) {
-                tempBullet.speed.velocity.vertical.range[1] = tempBullet.speed.vertical;
-              } else {
-                tempBullet.speed.velocity.vertical.range[1] = actionCommands.speed.velocity.vertical.range[1];
-              }
-            } else {
-              tempBullet.speed.velocity.vertical.range = actionCommands.speed.velocity.vertical.range;
-            }
-          } else {
-            tempBullet.speed.velocity.vertical.range = [tempBullet.speed.velocity.vertical, tempBullet.speed.velocity.vertical];
-          }
-        }
-      } else {
-        throw new Error("Invalid fire speed");
-      }
-    }
-    temp[name].bullets[mainActionLabel][actionCommands.label].push(tempBullet);
-    tempBullet = temp[name].bullets[mainActionLabel][actionCommands.label][temp[name].bullets[mainActionLabel][actionCommands.label].length - 1];
-    if (tempBullet.actionRef) {
-      tempBullet = drawBullet(tempBullet);
-      methods.actionRef(tempBullet.actionRef, undefined, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, tempBullet, mainActionLabel);
-    }
+  methods.fire = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
+    shot[flag[name].configs.shot[actionCommands.type].type].fire(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet);
   };
-  methods.vanish = function(actionLabel, actionCommands) {
+  methods.vanish = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
     
   };
-  methods.change = function(actionLabel, actionCommands, actionData, tempCommands, tempBullet, mainActionLabel) {
-    if (flag[name].actions.ref[actionLabel]) {
-      //Set tempBullet change
-      if (!tempBullet.change) {
-        tempBullet.change = {};
+  methods.change = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
+    shot[flag[name].configs.shot[actionCommands.type].type].change(actionLabel, actionCommands, actionData, tempCommands, tempBulletInput, mainActionLabel);
+  };
+  methods.func = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
+    actionCommands.callback(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet);
+    return;
+  };
+  //------------- END METHODS ZONE ------------
+  //------------ --- SHOT ZONE ----------------
+  shot.bullet = {
+    fire: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBulletInput) {
+      //Set label
+      if (!actionCommands.label) {
+        actionCommands.label = randomString();
       }
-      //Check for object data
+      //Set bullet group
+      if (!temp[name].bullets[mainActionLabel][actionCommands.label]) {
+        temp[name].bullets[mainActionLabel][actionCommands.label] = [];
+      }
+      //Set fire group
+      if (!temp[name].fire[actionLabel][actionCommands.label]) {
+        temp[name].fire[actionLabel][actionCommands.label] = {
+          direction: undefined,
+          speed: {
+            horizontal: 0,
+            vertical: 0
+          }
+        };
+      }
+      //Create new bullet
+      var tempBullet = {
+        type: actionCommands.type,
+        label: actionCommands.label,
+        position: {
+          now: undefined,
+        },
+        wait: {},
+        flag: randomString(),
+      };
+      //Check for actionRef
+      if (actionCommands.actionRef) {
+        tempBullet.actionRef = actionCommands.actionRef;
+        tempBullet.commands = [{
+          location: 0,
+          times: 1,
+          actions: flag[name].actions.ref[actionCommands.actionRef],
+          label: actionLabel,
+        }];
+      }
+      //Check for movement
       if (actionCommands.movement) {
         tempBullet.movement = actionCommands.movement;
       } else {
-        //Check for actionCommands position
+        //Check for position
         if (!actionCommands.position) {
           actionCommands.position = {};
         }
-        //Current position
+        //Check for position now and end
         if (actionCommands.position.now) {
-          tempBullet.position.now = actionCommands.position.now;
+          tempBullet.position.now = actionCommands.position.now.slice();
+        } else if (tempBulletInput) {
+          tempBullet.position.now = tempBulletInput.position.now.slice();
+        } else {
+          tempBullet.position.now = flag[name].configs.position();
         }
-        //End position
         if (actionCommands.position.end) {
-          //Check for value and velocity error
-          if (actionCommands.position.end && tempBullet.direction.velocity) {
-            throw new Error("End position value can't use when velocity is defined");
-          }
-          //Set change direction object
-          if (!tempBullet.change.direction) {
-            tempBullet.change.direction = {};
-          }
-          //Check for change data
-          tempBullet.change.direction.times = actionCommands.position.times || 1;
-          tempBullet.change.direction.value = angleAtoB(tempBullet.position.now, actionCommands.position.end);
-          tempBullet.change.direction.type = "plus";
-          tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
-          tempBullet.change.position.end = actionCommands.position.end;
+          tempBullet.position.end = actionCommands.position.end;
+          tempBullet.direction.value = angleAtoB(tempBullet.position.now, tempBullet.position.end);
         } else if (actionCommands.direction) {
-          //Check for action commands direction
-          if (!actionCommands.direction) {
-            actionCommands.direction = {};
+          if (!tempBullet.direction) {
+            tempBullet.direction = {};
           }
-          //Set change direction data
-          if (!tempBullet.change.direction) {
-            tempBullet.change.direction = {};
-          }
-          //Check for value and velocity error
-          if (actionCommands.direction.type === "plus" && tempBullet.direction.velocity) {
-            throw new Error("Plus type can't use when velocity is defined");
-          }
-          //Check for value
-          tempBullet.change.direction.value = actionCommands.direction.value || 0;
-          //Check for type
-          if (actionCommands.direction.type) {
-            tempBullet.change.direction.type = actionCommands.direction.type;
-          } else if (!actionCommands.direction.velocity) {
-            tempBullet.change.direction.type = "plus";
-          } else {
-            tempBullet.change.direction.type = "multiply";
-          }
-          //Check for times
-          tempBullet.change.direction.times = actionCommands.direction.times || 1;
-          //Calculate change
-          if (tempBullet.change.direction.type === "plus") {
-            tempBullet.change.direction.change = tempBullet.change.direction.value / tempBullet.change.direction.times;//(tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
-          } else if (tempBullet.change.direction.type === "multiply") {
-            tempBullet.change.direction.change = tempBullet.change.direction.value;
-          }
-          if (actionCommands.direction.velocity) {
-            //Set change direction velocity data
-            if (!tempBullet.change.direction.velocity) {
-              tempBullet.change.direction.velocity = {};
+          switch (actionCommands.direction.type) {
+            case "aim": {
+              tempBullet.direction.value = angleAtoB(tempBullet.position.now, flag[name].configs.target()) + (actionCommands.direction.value || 0);
             }
-            //Check for value velocity
-            tempBullet.change.direction.velocity.value = actionCommands.direction.velocity.value || 1;
-            //Check for type velocity
-            if (actionCommands.direction.velocity.type && actionCommands.direction.velocity.value) {
-              tempBullet.change.direction.velocity.type = actionCommands.direction.velocity.value;
-            } else if (actionCommands.direction.velocity.value) {
-              tempBullet.change.direction.velocity.type = "plus";
-            } else {
-              tempBullet.change.direction.velocity.type = "multiply";
+            break;
+            case "absolute": {
+              tempBullet.direction.value = actionCommands.direction.value;
             }
-            //Check for times velocity
-            tempBullet.change.direction.velocity.times = actionCommands.direction.velocity.times || 1;
-            //Check for velocity range
-            try {
-              tempBullet.direction.velocity.range = actionCommands.direction.velocity.range || tempBullet.direction.velocity.range;
-            } catch (error) {
-              //Ignore error
-            }
-            //Calculate change
-            if (tempBullet.change.direction.velocity.type === "plus") {
-              tempBullet.change.direction.velocity.change = (tempBullet.change.direction.velocity.value - tempBullet.direction.velocity.value) / tempBullet.change.direction.velocity.times;
-            } else if (tempBullet.change.direction.velocity.type === "multiply") {
-              tempBullet.change.direction.velocity.change = tempBullet.change.direction.velocity.value;
-            }
-          }
-        }
-        //Speed
-        if (actionCommands.speed) {
-          //Set change speed data
-          if (!tempBullet.change.speed) {
-            tempBullet.change.speed = {};
-          }//Set change speed data
-          if (!tempBullet.change.speed.velocity) {
-            tempBullet.change.speed.velocity = {};
-          }
-          //Check for velocity
-          if (!actionCommands.speed.velocity) {
-            actionCommands.speed.velocity = {};
-          }
-          //Horizontal speed
-          if (actionCommands.speed.horizontal) {
-            //Set change horizontal speed data
-            if (!tempBullet.change.speed.horizontal) {
-              tempBullet.change.speed.horizontal = {};
-            }
-            //Check for value and velocity error
-            if (actionCommands.speed.horizontal.type === "plus" && tempBullet.speed.velocity.horizontal) {
-              throw new Error("Plus type can't use when velocity is defined");
-            }
-            //Check for value
-            tempBullet.change.speed.horizontal.value = actionCommands.speed.horizontal.value || 1;
-            //Check for type
-            if (actionCommands.speed.horizontal.type) {
-              tempBullet.change.speed.horizontal.type = actionCommands.speed.horizontal.type;
-            } else if (!actionCommands.speed.horizontal.velocity) {
-              tempBullet.change.speed.horizontal.type = "plus";
-            } else {
-              tempBullet.change.speed.horizontal.type = "multiply";
-            }
-            //Check for times
-            tempBullet.change.speed.horizontal.times = actionCommands.speed.horizontal.times || 1;
-            //Calculate change
-            if (tempBullet.change.speed.horizontal.type === "plus") {
-              tempBullet.change.speed.horizontal.change = (tempBullet.change.speed.horizontal.value - tempBullet.speed.horizontal) / tempBullet.change.speed.horizontal.times;
-            } else if (tempBullet.change.speed.horizontal.type === "multiply") {
-              tempBullet.change.speed.horizontal.change = tempBullet.change.speed.horizontal.value;
-            }
-            //Check for velocity
-            if (actionCommands.speed.velocity.horizontal) {
-              //Set change horizontal speed data
-              if (!tempBullet.change.speed.velocity.horizontal) {
-                tempBullet.change.speed.velocity.horizontal = {};
+            break;
+            case "sequence": {
+              if (!temp[name].fire[actionLabel][actionCommands.label].direction || typeof temp[name].fire[actionLabel][actionCommands.label].direction !== "number") {
+                temp[name].fire[actionLabel][actionCommands.label].direction = actionCommands.direction.value;
+              } else if (typeof temp[name].fire[actionLabel][actionCommands.label].direction === "number") {
+                temp[name].fire[actionLabel][actionCommands.label].direction += actionCommands.direction.value;
               }
-              //Check for value velocity
-              tempBullet.change.speed.velocity.horizontal.value = actionCommands.speed.velocity.horizontal.value || 1;
-              //Check for type velocity
-              if (actionCommands.speed.velocity.horizontal.type && actionCommands.speed.velocity.horizontal.value) {
-                tempBullet.change.speed.velocity.horizontal.type = actionCommands.speed.velocity.horizontal.value;
-              } else if (actionCommands.speed.velocity.horizontal) {
-                tempBullet.change.speed.velocity.horizontal.type = "plus";
+              tempBullet.direction.value = temp[name].fire[actionLabel][actionCommands.label].direction;
+            }
+            break;
+            case "relative": {
+              //Check if is ref
+              if (flag[name].actions.ref[actionLabel]) {
+                tempBullet.direction.value = actionCommands.direction.value;
+                tempBullet.direction.value += tempBulletInput.direction.value;
               } else {
-                tempBullet.change.speed.velocity.horizontal.type = "multiply";
-              }
-              //Check for times velocity
-              tempBullet.change.speed.velocity.horizontal.times = actionCommands.speed.velocity.horizontal.times || 1;
-              //Check for velocity range
-              try {
-                tempBullet.speed.velocity.horizontal.range = actionCommands.speed.velocity.horizontal.range || tempBullet.speed.velocity.horizontal.range;
-              } catch (error) {
-                
-              }
-              //Calculate change
-              if (tempBullet.change.speed.velocity.horizontal.type === "plus") {
-                tempBullet.change.speed.velocity.horizontal.change = (tempBullet.change.speed.velocity.horizontal.value - tempBullet.speed.velocity.horizontal.value) / tempBullet.change.speed.velocity.horizontal.times;
-              } else if (tempBullet.change.speed.velocity.horizontal.type === "multiply") {
-                tempBullet.change.speed.velocity.horizontal.change = tempBullet.change.speed.velocity.horizontal.value;
+                throw new Error("Relative must be use in actionRef");
               }
             }
-          }
-          //Vertical speed
-          if (actionCommands.speed.vertical) {
-            //Set change vertical speed data
-            if (!tempBullet.change.speed.vertical) {
-              tempBullet.change.speed.vertical = {};
-            }
-            //Check for value and velocity error
-            if (actionCommands.speed.vertical.type === "plus" && tempBullet.speed.velocity.vertical) {
-              throw new Error("Plus type can't use when velocity is defined");
-            }
-            //Check for value
-            tempBullet.change.speed.vertical.value = actionCommands.speed.vertical.value || 1;
-            //Check for type
-            if (actionCommands.speed.vertical.type) {
-              tempBullet.change.speed.vertical.type = actionCommands.speed.vertical.type;
-            } else if (!actionCommands.speed.vertical.velocity) {
-              tempBullet.change.speed.vertical.type = "plus";
-            } else {
-              tempBullet.change.speed.vertical.type = "multiply";
-            }
-            //Check for times
-            tempBullet.change.speed.vertical.times = actionCommands.speed.vertical.times || 1;
-            //Calculate change
-            if (tempBullet.change.speed.vertical.type === "plus") {
-              tempBullet.change.speed.vertical.change = (tempBullet.change.speed.vertical.value - tempBullet.speed.vertical) / tempBullet.change.speed.vertical.times;
-            } else if (tempBullet.change.speed.vertical.type === "multiply") {
-              tempBullet.change.speed.vertical.change = tempBullet.change.speed.vertical.value;
-            }
-            //Check for velocity
-            if (actionCommands.speed.velocity.vertical) {
-              //Set change horizontal speed data
-              if (!tempBullet.change.speed.velocity.vertical) {
-                tempBullet.change.speed.velocity.vertical = {};
-              }
-              //Check for value velocity
-              tempBullet.change.speed.velocity.vertical.value = actionCommands.speed.velocity.vertical.value || 1;
-              //Check for type velocity
-              if (actionCommands.speed.velocity.vertical.type && actionCommands.speed.velocity.vertical.value) {
-                tempBullet.change.speed.velocity.vertical.type = actionCommands.speed.velocity.vertical.value;
-              } else if (actionCommands.speed.velocity.vertical) {
-                tempBullet.change.speed.velocity.vertical.type = "plus";
-              } else {
-                tempBullet.change.speed.velocity.vertical.type = "multiply";
-              }
-              //Check for times velocity
-              tempBullet.change.speed.velocity.vertical.times = actionCommands.speed.velocity.vertical.times || 1;
-              //Check for velocity range
-              try {
-              tempBullet.speed.velocity.vertical.range = actionCommands.speed.velocity.vertical.range || tempBullet.speed.velocity.vertical.range;
-              } catch (error) {
-                
-              }
-              //Calculate change
-              if (tempBullet.change.speed.velocity.vertical.type === "plus") {
-                tempBullet.change.speed.velocity.vertical.change = (tempBullet.change.speed.velocity.vertical.value - tempBullet.speed.velocity.vertical.value) / tempBullet.change.speed.velocity.vertical.times;
-              } else if (tempBullet.change.speed.velocity.vertical.type === "multiply") {
-                tempBullet.change.speed.velocity.vertical.change = tempBullet.change.speed.velocity.vertical.value;
-              }
-            }
-          }
-        }
-      }
-    } else {
-      throw new Error("Change must be called in not fire actions");
-    }
-  };
-  methods.func = function(actionLabel, actionCommands) {
-    actionCommands.callback();
-    return;
-  };
-  methods.actionRef = function(actionLabel, actionCommands, actionData, tempCommands, tempBullet, mainActionLabel) {
-    if (!tempBullet.commands) {
-      tempBullet.commands = [{
-        location: 0,
-        times: 1,
-        actions: actionData,
-        label: actionLabel
-      }];
-      tempCommands = tempBullet.commands;
-    }
-    var tempData;
-    (function mainLoop() {
-      while (tempCommands[tempCommands.length - 1].times > 0) {
-        while (tempCommands[tempCommands.length - 1].location < actionData.length) {
-          tempData = methods[(function() {
-            switch (actionData[tempCommands[tempCommands.length- 1].location].func) {
-              case "repeat": {
-                return "repeatRef";
-              }
-              break;
-              case "wait": {
-                return "waitRef";
-              }
-              break;
-              default: {
-                return actionData[tempCommands[tempCommands.length- 1].location].func;
-              }
-            }
-          })()](actionLabel, actionData[tempCommands[tempCommands.length- 1].location], actionData, tempCommands, tempBullet, mainActionLabel);
-          if (typeof tempData === "string") {
-            return;
-          }
-          tempCommands[tempCommands.length- 1].location ++;
-        }
-        tempCommands[tempCommands.length- 1].location = 0;
-        tempCommands[tempCommands.length- 1].times --;
-      }
-      try {
-        temp[name].repeat.ref[actionLabel][tempCommands[tempCommands.length - 1].label][tempBullet.flag].done = true;
-        tempCommands.pop();
-        if (tempCommands.length <= 1) {
-          return;
-        }
-        actionData = tempCommands[tempCommands.length- 1].actions;
-        mainLoop();
-      } catch (error) {
-        
-      }
-    })();
-    if (tempData === "repeat") {
-      methods.actionRef(actionLabel, actionCommands, tempCommands[tempCommands.length - 1].actions, tempCommands, tempBullet, mainActionLabel);
-    }
-  };
-  methods.repeatRef = function(actionLabel, actionCommands, actionData, tempCommands, tempBullet, mainActionLabel) {
-    //Check if label is defined
-    if (!actionCommands.label) {
-      actionCommands.label = randomString();
-    }
-    if (!temp[name].repeat.ref[actionLabel][actionCommands.label]) {
-      temp[name].repeat.ref[actionLabel][actionCommands.label] = {};
-    }
-    if (!temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag]) {
-      temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag] = {};
-    }
-    tempCommands.push({
-      actions: actionData[tempCommands[tempCommands.length- 1].location].actions,
-      location: 0,
-      times: (function() {
-        if (temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag].done) {
-          //Check if in range
-          //Check if velocity exist
-          if (!actionCommands.velocity) {
-            actionCommands.velocity = 0;
-          } else {
-            //Check if range exist
-            if (!actionCommands.range) {
-              actionCommands.range = [actionCommands.times, actionCommands.times];
-            } else if (actionCommands.range) {
-              //Check if range is lower than times
-              if (actionCommands.range[0] > actionCommands.times) {
-                actionCommands.range[0] = actionCommands.times;
-              }
-              if (actionCommands.range[1] < actionCommands.times) {
-                actionCommands.range[1] = actionCommands.times;
-              }
-              //Process range
-              if (temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag].times >= actionCommands.range[0] && temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag].times <= actionCommands.range[1]) {
-                temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag].times += actionCommands.velocity;
-              }
-              if (temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag].times < actionCommands.range[0]) {
-                temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag].times = actionCommands.range[0];
-              } else if (temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag].times > actionCommands.range[1]) {
-                temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag].times = actionCommands.range[1];
-              }
+            break;
+            default: {
+              tempBullet.direction.value = 0;
             }
           }
         } else {
-          temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag].times = actionCommands.times;
+          throw new Error("Invalid fire direction");
         }
-        return temp[name].repeat.ref[actionLabel][actionCommands.label][tempBullet.flag].times;
-      })(),//,
-      label: actionCommands.label || (function() {
-        var tempString = randomString();
-        actionCommands.label = tempString;
-        return tempString;
-      })(),
-    });
-    tempCommands[tempCommands.length - 2].location ++;
-    return "repeat";
-  };
-  methods.waitRef = function(actionLabel, actionCommands, actionData, tempCommands, tempBullet, mainActionLabel) {
-    //Check if label is defined
-    if (!actionCommands.label) {
-      actionCommands.label = randomString();
-    }
-    if (!temp[name].wait.ref[actionLabel][actionCommands.label]) {
-      temp[name].wait.ref[actionLabel][actionCommands.label] = {};
-    }
-    //Set wait label group
-    if (!temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag]) {
-      temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag] = {};
-    }
-    //Check if previous wait is called
-    if (temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag].done) {
-      //Check if in range
-      //Check if velocity exist
-      if (!actionCommands.velocity) {
-        actionCommands.velocity = 0;
-      } else {
-        //Check if range exist
-        if (!actionCommands.range) {
-          actionCommands.range = [actionCommands.times, actionCommands.times];
-        } else if (actionCommands.range) {
-          //Check if range is lower than times
-          if (actionCommands.range[0] > actionCommands.times) {
-            actionCommands.range[0] = actionCommands.times;
+        if (actionCommands.speed) {
+          //Set tempBulllet speed group
+          if (!tempBullet.speed) {
+            tempBullet.speed = {};
           }
-          if (actionCommands.range[1] < actionCommands.times) {
-            actionCommands.range[1] = actionCommands.times;
+          switch (actionCommands.speed.horizontal.type) {
+            case "absolute": {
+              tempBullet.speed.horizontal = actionCommands.speed.horizontal.value;
+            }
+            break;
+            case "sequence": {
+              if (!temp[name].fire[actionLabel][actionCommands.label].speed.horizontal || typeof temp[name].fire[actionLabel][actionCommands.label].speed.horizontal !== "number") {
+                temp[name].fire[actionLabel][actionCommands.label].speed.horizontal = actionCommands.speed.horizontal.value;
+              } else if (typeof temp[name].fire[actionLabel][actionCommands.label].speed.horizontal === "number") {
+                temp[name].fire[actionLabel][actionCommands.label].speed.horizontal += actionCommands.speed.horizontal.value;
+              }
+              tempBullet.speed.horizontal = temp[name].fire[actionLabel][actionCommands.label].speed.horizontal;
+            }
+            break;
+            case "relative": {
+              //Check if is ref
+              if (flag[name].actions.ref[actionLabel]) {
+                tempBullet.speed.horizontal = actionCommands.speed.horizontal.value;
+                tempBullet.speed.horizontal += tempBulletInput.speed.horizontal.value;
+              } else {
+                throw new Error("Relative must be use in actionRef");
+              }
+            }
+            break;
+            default: {
+              tempBullet.speed.horizontal = 1;
+            }
           }
-          //Process range
-          if (temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag].times >= actionCommands.range[0] && temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag].times <= actionCommands.range[1]) {
-            temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag].times += actionCommands.velocity;
+          switch (actionCommands.speed.vertical.type) {
+            case "absolute": {
+              tempBullet.speed.vertical = actionCommands.speed.vertical.value;
+            }
+            break;
+            case "sequence": {
+              if (!temp[name].fire[actionLabel][actionCommands.label].speed.vertical || typeof temp[name].fire[actionLabel][actionCommands.label].speed.vertical !== "number") {
+                temp[name].fire[actionLabel][actionCommands.label].speed.vertical = actionCommands.speed.vertical.value;
+              } else if (typeof temp[name].fire[actionLabel][actionCommands.label].speed.vertical === "number") {
+                temp[name].fire[actionLabel][actionCommands.label].speed.vertical += actionCommands.speed.vertical.value;
+              }
+              tempBullet.speed.vertical = temp[name].fire[actionLabel][actionCommands.label].speed.vertical;
+            }
+            break;
+            case "relative": {
+              //Check if is ref
+              if (flag[name].actions.ref[actionLabel]) {
+                tempBullet.speed.vertical = actionCommands.speed.vertical.value;
+                tempBullet.speed.vertical += tempBulletInput.speed.vertical.value;
+              } else {
+                throw new Error("Relative must be use in actionRef");
+              }
+            }
+            break;
+            default: {
+              tempBullet.speed.vertical = 1;
+            }
           }
-          if (temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag].times < actionCommands.range[0]) {
-            temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag].times = actionCommands.range[0];
-          } else if (temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag].times > actionCommands.range[1]) {
-            temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag].times = actionCommands.range[1];
-          }
+        } else {
+          throw new Error("Invalid fire speed");
         }
       }
-    } else {
-      temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag].times = actionCommands.times;
-    }
-    tempBullet.wait.label = actionCommands.label;
-    tempBullet.wait.times = temp[name].wait.ref[actionLabel][actionCommands.label][tempBullet.flag].times;
-    tempCommands[tempCommands.length - 1].location ++;
-    return "wait";
-  };
-  //------------- END METHODS ZONE ------------
-  //------------ OTHER STUFF ZONE -------------
-  //Helper function
-  function drawBullet(tempBullet) {
-    //Check for change data
-    if (tempBullet.change) {
-      //Check for direction
-      if (tempBullet.change.direction) {
-        //Check for times data if larger than 0
-        if (tempBullet.change.direction.times > 0) {
-          //Check for type
-          if (tempBullet.change.direction.type === "plus") {
-            tempBullet.direction.value += tempBullet.change.direction.change;
-            tempBullet.direction.value = tempBullet.direction.value;
-          } else if (tempBullet.change.direction.type === "multiply") {
-            tempBullet.direction.value *= tempBullet.change.direction.change;
-            tempBullet.direction.value = tempBullet.direction.value;
-          }
-          //Minus times to 1
-          tempBullet.change.direction.times --;
-        }
-        //Check for direction velocity
-        if (tempBullet.change.direction.velocity) {
-          if (tempBullet.change.direction.velocity.times > 0) {
+      temp[name].bullets[mainActionLabel][actionCommands.label].push(tempBullet);
+      tempBullet = temp[name].bullets[mainActionLabel][actionCommands.label][temp[name].bullets[mainActionLabel][actionCommands.label].length - 1];
+      return tempBullet;
+    },
+    draw: function(tempBullet) {
+      //Check for change data
+      if (tempBullet.change) {
+        //Check for direction
+        if (tempBullet.change.direction) {
+          //Check for times data if larger than 0
+          if (tempBullet.change.direction.times > 0) {
             //Check for type
-            if (tempBullet.change.direction.velocity.type === "plus") {
-              tempBullet.direction.velocity.value += tempBullet.change.direction.velocity.change;
-            } else if (tempBullet.change.direction.velocity.type === "multiply") {
-              tempBullet.direction.velocity.value *= tempBullet.change.direction.velocity.change;
+            if (tempBullet.change.direction.type === "plus") {
+              tempBullet.direction.value += tempBullet.change.direction.change;
+            } else if (tempBullet.change.direction.type === "multiply") {
+              tempBullet.direction.value *= tempBullet.change.direction.change;
             }
             //Minus times to 1
-            tempBullet.change.direction.velocity.times --;
+            tempBullet.change.direction.times --;
           }
         }
-      }
-      //Check for speed
-      if (tempBullet.change.speed) {
-        //Check for times data if larger than 0
-        if (tempBullet.change.speed.horizontal) {
-          if (tempBullet.change.speed.horizontal.times > 0) {
-            //Check for type
-            if (tempBullet.change.speed.horizontal.type === "plus") {
-              tempBullet.speed.horizontal += tempBullet.change.speed.horizontal.change;
-            } else if (tempBullet.change.speed.horizontal.type === "multiply") {
-              tempBullet.speed.horizontal *= tempBullet.change.speed.horizontal.change;
-            }
-            //Minus times to 1
-            tempBullet.change.speed.horizontal.times --;
-          }
-        }
-        //Check for times data if larger than 0
-        if (tempBullet.change.speed.vertical) {
-          if (tempBullet.change.speed.vertical.times > 0) {
-            //Check for type
-            if (tempBullet.change.speed.vertical.type === "plus") {
-              tempBullet.speed.vertical += tempBullet.change.speed.vertical.change;
-            } else if (tempBullet.change.speed.vertical.type === "multiply") {
-              tempBullet.speed.vertical *= tempBullet.change.speed.vertical.change;
-            }
-            //Minus times to 1
-            tempBullet.change.speed.vertical.times --;
-          }
-        }
-        //Check for times data if larger than 0
-        if (tempBullet.change.speed.velocity) {
-          if (tempBullet.change.speed.velocity.horizontal) {
-            if (tempBullet.change.speed.velocity.horizontal.times > 0) {
+        //Check for speed
+        if (tempBullet.change.speed) {
+          //Check for times data if larger than 0
+          if (tempBullet.change.speed.horizontal) {
+            if (tempBullet.change.speed.horizontal.times > 0) {
               //Check for type
-              if (tempBullet.change.speed.velocity.horizontal.type === "plus") {
-                tempBullet.speed.velocity.horizontal.value += tempBullet.change.speed.velocity.horizontal.change;
-              } else if (tempBullet.change.speed.velocity.horizontal.type === "multiply") {
-                tempBullet.speed.velocity.horizontal.value *= tempBullet.change.speed.velocity.horizontal.change;
+              if (tempBullet.change.speed.horizontal.type === "plus") {
+                tempBullet.speed.horizontal += tempBullet.change.speed.horizontal.change;
+              } else if (tempBullet.change.speed.horizontal.type === "multiply") {
+                tempBullet.speed.horizontal *= tempBullet.change.speed.horizontal.change;
               }
               //Minus times to 1
-              tempBullet.change.speed.velocity.horizontal.times --;
+              tempBullet.change.speed.horizontal.times --;
             }
           }
           //Check for times data if larger than 0
-          if (tempBullet.change.speed.velocity.vertical) {
-            if (tempBullet.change.speed.velocity.vertical.times > 0) {
+          if (tempBullet.change.speed.vertical) {
+            if (tempBullet.change.speed.vertical.times > 0) {
               //Check for type
-              if (tempBullet.change.speed.velocity.vertical.type === "plus") {
-                tempBullet.speed.velocity.vertical.value += tempBullet.change.speed.velocity.vertical.change;
-              } else if (tempBullet.change.speed.velocity.vertical.type === "multiply") {
-                tempBullet.speed.velocity.vertical.value *= tempBullet.change.speed.velocity.vertical.change;
+              if (tempBullet.change.speed.vertical.type === "plus") {
+                tempBullet.speed.vertical += tempBullet.change.speed.vertical.change;
+              } else if (tempBullet.change.speed.vertical.type === "multiply") {
+                tempBullet.speed.vertical *= tempBullet.change.speed.vertical.change;
               }
               //Minus times to 1
-              tempBullet.change.speed.velocity.vertical.times --;
+              tempBullet.change.speed.vertical.times --;
             }
           }
         }
       }
-    }
-    //Check movement data
-    if (typeof tempBullet.movement === "function") {
-      tempBullet.position.now = tempBullet.movement();
-    } else {
-      //Main x movement
-      tempBullet.position.now[0] = Math.sin(getAngle(tempBullet.direction.value)) * tempBullet.speed.horizontal + tempBullet.position.now[0];
-      //Main y movement
-      tempBullet.position.now[1] = Math.cos(getAngle(tempBullet.direction.value)) * tempBullet.speed.vertical + tempBullet.position.now[1];
-      //Check for direction velocity
-      if (tempBullet.direction.velocity) {
-        //Check for range
-        if (tempBullet.direction.velocity.range[0] <= tempBullet.direction.value && tempBullet.direction.velocity.range[1] >= tempBullet.direction.value) {
-          tempBullet.direction.value += tempBullet.direction.velocity.value;
-        } else if (tempBullet.direction.velocity.range[0] > tempBullet.direction.value || tempBullet.direction.velocity.range[1] < tempBullet.direction.value) {
-          tempBullet.direction.value = tempBullet.direction.velocity.value;
-        }
+      //Check movement data
+      if (typeof tempBullet.movement === "function") {
+        tempBullet.position.now = tempBullet.movement();
+      } else {
+        //Main x movement
+        tempBullet.position.now[0] = Math.sin(getAngle(tempBullet.direction.value)) * tempBullet.speed.horizontal + tempBullet.position.now[0];
+        //Main y movement
+        tempBullet.position.now[1] = Math.cos(getAngle(tempBullet.direction.value)) * tempBullet.speed.vertical + tempBullet.position.now[1];
       }
-      //Check for speed velocity
-      if (tempBullet.speed.velocity) {
-        //Check for range
-        if (tempBullet.speed.velocity.horizontal) {
-          if (tempBullet.speed.velocity.horizontal.range[0] <= tempBullet.speed.horizontal && tempBullet.speed.velocity.horizontal.range[1] >= tempBullet.speed.horizontal) {
-            tempBullet.speed.horizontal += tempBullet.speed.velocity.horizontal.value;
-          } else if (tempBullet.speed.velocity.horizontal.range[0] > tempBullet.speed.horizontal || tempBullet.speed.velocity.horizontal.range[1] < tempBullet.speed.horizontal) {
-            tempBullet.speed.horizontal = tempBullet.speed.velocity.horizontal.value;
+      return tempBullet;
+    },
+    change: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
+      if (flag[name].actions.ref[actionLabel]) {
+        //Set tempBullet change
+        if (!tempBullet.change) {
+          tempBullet.change = {};
+        }
+        //Check for object data
+        if (actionCommands.movement) {
+          tempBullet.movement = actionCommands.movement;
+        } else {
+          //Check for actionCommands position
+          if (!actionCommands.position) {
+            actionCommands.position = {};
+          }
+          //Current position
+          if (actionCommands.position.now) {
+            tempBullet.position.now = actionCommands.position.now;
+          }
+          //End position
+          if (actionCommands.position.end) {
+            //Check for value and velocity error
+            if (actionCommands.position.end && tempBullet.direction.velocity) {
+              throw new Error("End position value can't use when velocity is defined");
+            }
+            //Set change direction object
+            if (!tempBullet.change.direction) {
+              tempBullet.change.direction = {};
+            }
+            //Check for change data
+            tempBullet.change.direction.times = actionCommands.position.times || 1;
+            tempBullet.change.direction.value = angleAtoB(tempBullet.position.now, actionCommands.position.end);
+            tempBullet.change.direction.type = "plus";
+            tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
+            tempBullet.change.position.end = actionCommands.position.end;
+          } else if (actionCommands.direction) {
+            //Check for action commands direction
+            if (!actionCommands.direction) {
+              actionCommands.direction = {};
+            }
+            //Set change direction data
+            if (!tempBullet.change.direction) {
+              tempBullet.change.direction = {};
+            }
+            //Check for value and velocity error
+            if (actionCommands.direction.type === "plus" && tempBullet.direction.velocity) {
+              throw new Error("Plus type can't use when velocity is defined");
+            }
+            //Check for value
+            tempBullet.change.direction.value = actionCommands.direction.value || 0;
+            //Check for type
+            if (actionCommands.direction.type) {
+              tempBullet.change.direction.type = actionCommands.direction.type;
+            } else if (!actionCommands.direction.velocity) {
+              tempBullet.change.direction.type = "plus";
+            } else {
+              tempBullet.change.direction.type = "multiply";
+            }
+            //Check for times
+            tempBullet.change.direction.times = actionCommands.direction.times || 1;
+            //Calculate change
+            if (tempBullet.change.direction.type === "plus") {
+              tempBullet.change.direction.change = tempBullet.change.direction.value / tempBullet.change.direction.times;//(tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
+            } else if (tempBullet.change.direction.type === "multiply") {
+              tempBullet.change.direction.change = tempBullet.change.direction.value;
+            }
+          }
+          //Speed
+          if (actionCommands.speed) {
+            //Set change speed data
+            if (!tempBullet.change.speed) {
+              tempBullet.change.speed = {};
+            }
+            //Horizontal speed
+            if (actionCommands.speed.horizontal) {
+              //Set change horizontal speed data
+              if (!tempBullet.change.speed.horizontal) {
+                tempBullet.change.speed.horizontal = {};
+              }
+              //Check for value and velocity error
+              if (actionCommands.speed.horizontal.type === "plus" && tempBullet.speed.velocity.horizontal) {
+                throw new Error("Plus type can't use when velocity is defined");
+              }
+              //Check for value
+              tempBullet.change.speed.horizontal.value = actionCommands.speed.horizontal.value || 1;
+              //Check for type
+              if (actionCommands.speed.horizontal.type) {
+                tempBullet.change.speed.horizontal.type = actionCommands.speed.horizontal.type;
+              } else if (!actionCommands.speed.horizontal.velocity) {
+                tempBullet.change.speed.horizontal.type = "plus";
+              } else {
+                tempBullet.change.speed.horizontal.type = "multiply";
+              }
+              //Check for times
+              tempBullet.change.speed.horizontal.times = actionCommands.speed.horizontal.times || 1;
+              //Calculate change
+              if (tempBullet.change.speed.horizontal.type === "plus") {
+                tempBullet.change.speed.horizontal.change = (tempBullet.change.speed.horizontal.value - tempBullet.speed.horizontal) / tempBullet.change.speed.horizontal.times;
+              } else if (tempBullet.change.speed.horizontal.type === "multiply") {
+                tempBullet.change.speed.horizontal.change = tempBullet.change.speed.horizontal.value;
+              }
+            }
+            //Vertical speed
+            if (actionCommands.speed.vertical) {
+              //Set change vertical speed data
+              if (!tempBullet.change.speed.vertical) {
+                tempBullet.change.speed.vertical = {};
+              }
+              //Check for value and velocity error
+              if (actionCommands.speed.vertical.type === "plus" && tempBullet.speed.velocity.vertical) {
+                throw new Error("Plus type can't use when velocity is defined");
+              }
+              //Check for value
+              tempBullet.change.speed.vertical.value = actionCommands.speed.vertical.value || 1;
+              //Check for type
+              if (actionCommands.speed.vertical.type) {
+                tempBullet.change.speed.vertical.type = actionCommands.speed.vertical.type;
+              } else if (!actionCommands.speed.vertical.velocity) {
+                tempBullet.change.speed.vertical.type = "plus";
+              } else {
+                tempBullet.change.speed.vertical.type = "multiply";
+              }
+              //Check for times
+              tempBullet.change.speed.vertical.times = actionCommands.speed.vertical.times || 1;
+              //Calculate change
+              if (tempBullet.change.speed.vertical.type === "plus") {
+                tempBullet.change.speed.vertical.change = (tempBullet.change.speed.vertical.value - tempBullet.speed.vertical) / tempBullet.change.speed.vertical.times;
+              } else if (tempBullet.change.speed.vertical.type === "multiply") {
+                tempBullet.change.speed.vertical.change = tempBullet.change.speed.vertical.value;
+              }
+            }
           }
         }
-        if (tempBullet.speed.velocity.vertical) {
-          if (tempBullet.speed.velocity.vertical.range[0] <= tempBullet.speed.vertical && tempBullet.speed.velocity.vertical.range[1] >= tempBullet.speed.vertical) {
-            tempBullet.speed.vertical += tempBullet.speed.velocity.vertical.value;
-          } else if (tempBullet.speed.velocity.vertical.range[0] > tempBullet.speed.vertical || tempBullet.speed.velocity.vertical.range[1] < tempBullet.speed.vertical) {
-            tempBullet.speed.vertical = tempBullet.speed.velocity.vertical.value;
-          }
-        }
+      } else {
+        throw new Error("Change must be called in not fire actions");
       }
-    }
-    return tempBullet;
+    },
+    vanish: function(tempBullet, bulletCount, bulletGroup) {
+      //Remove all bullet is null
+      bulletGroup[bulletIndex] = null;
+    },
+  };
+  //-------------- END SHOT ZONE --------------
+  //------------ OTHER STUFF ZONE -------------
+  //Helper function
+  function removeBullet(bulletIndex, bulletGroup) {
+    bulletGroup.splice(bulletIndex, 1);
+  }
+  function firstActionProcess(tempBullet, mainActionLabel) {
+    tempBullet = shot[tempBullet.type].draw(tempBullet);
+    methods.actions(tempBullet.actionRef, mainActionLabel, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, undefined, tempBullet);
   }
   function randomString() {
     return (Math.random() * 1e36).toString(36);
@@ -1260,6 +868,13 @@
       degree -= 360;
     }
     return degree;
+  };
+  function normalizeAngle(angle) {
+    if (flag[name].configs.angleType === "degree") {
+      return Math.normalizeDegree(angle);
+    } else if (flag[name].configs.angleType === "radian") {
+      return Math.normalizeRadian(angle);
+    }
   };
   Math.pythagoreanPos = function(a, b) {
     return Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2));
