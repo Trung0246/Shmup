@@ -1,8 +1,6 @@
 (function(window) {
   "use strict";
-  var VERSION = "1.0.5";
-  
-  //TODO: fix aim error
+  var VERSION = "1.0.6";
   
   /*
   MIT License
@@ -233,16 +231,9 @@
       }
       //Draw bullet
       for (var fireLabel in temp[name].bullets[actionLabel]) {
-        //var bulletCount = temp[name].bullets[actionLabel][fireLabel].length;
         var bulletGroup = temp[name].bullets[actionLabel][fireLabel];
-        /*(function() {
-          while (bulletCount --) {
-            
-          }
-        })();*/
-        //LOOP FOWARD, NOT BACKWARD
         //Main bullet update group
-        for (var bulletCount = 0; bulletCount < temp[name].bullets[actionLabel][fireLabel].length; bulletCount ++) {
+        for (var bulletCount = 0; bulletCount < bulletGroup.length; bulletCount ++) {
           var tempBullet = temp[name].bullets[actionLabel][fireLabel][bulletCount];
           //process draw bullet data
           tempBullet = shot[flag[name].configs.shot[tempBullet.type].type].draw(tempBullet);
@@ -278,7 +269,6 @@
               case "vanish": {
                 flag[name].configs.shot[tempBullet.type].vanish(bulletGroup[bulletCount]);
                 shot[flag[name].configs.shot[tempBullet.type].type].vanish(tempBullet, bulletCount, bulletGroup);
-                bulletCount --;
               }
               break;
               //May add aptional feature here
@@ -286,11 +276,12 @@
           }
         }
         //Remove all bullet that is null
-        var nullBulletCount = temp[name].bullets[actionLabel][fireLabel].length;
-        while (nullBulletCount --) {
-          if (bulletGroup[nullBulletCount] === null) {
-            bulletGroup.splice(nullBulletCount, 1);
-            nullBulletCount --;
+        //Check if null is has
+        if (bulletGroup.indexOf(null) !== -1) {
+          for (var nullBulletCount = bulletGroup.length - 1; nullBulletCount >= 0; --nullBulletCount) {
+            if (bulletGroup[nullBulletCount] === null) {
+              bulletGroup.splice(nullBulletCount, 1);
+            }
           }
         }
       }
@@ -494,7 +485,7 @@
           }
           switch (actionCommands.direction.type) {
             case "aim": {
-              tempBullet.direction.value = angleAtoB(tempBullet.position.now, flag[name].configs.target()) + (actionCommands.direction.value || 0);
+              tempBullet.direction.value = angleAtoB(tempBullet.position.now, flag[name].configs.target());// + (actionCommands.direction.value || 0);
             }
             break;
             case "absolute": {
@@ -792,15 +783,12 @@
     },
     vanish: function(tempBullet, bulletCount, bulletGroup) {
       //Remove all bullet is null
-      bulletGroup[bulletIndex] = null;
+      bulletGroup[bulletCount] = null;
     },
   };
   //-------------- END SHOT ZONE --------------
   //------------ OTHER STUFF ZONE -------------
   //Helper function
-  function removeBullet(bulletIndex, bulletGroup) {
-    bulletGroup.splice(bulletIndex, 1);
-  }
   function firstActionProcess(tempBullet, mainActionLabel) {
     tempBullet = shot[tempBullet.type].draw(tempBullet);
     methods.actions(tempBullet.actionRef, mainActionLabel, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, undefined, tempBullet);
@@ -844,9 +832,9 @@
   }
   function angleAtoB(a, b) {
     if (flag[name].configs.angleType === "degree" || !flag[name].configs.angleType) {
-      return Math.radToDeg(Math.atan2(b[1] - a[1], b[0] - a[0]));
+      return Math.radToDeg(-Math.atan2(a[0] - b[0], -(a[1] - b[1])));
     } else if (flag[name].configs.angleType === "radian") {
-      return Math.atan2(b[1] - a[1], b[0] - a[0])
+      return -Math.atan2(a[0] - b[0], -(a[1] - b[1]));
     };
   }
   Math.normalizeRadian = function(radian) {
