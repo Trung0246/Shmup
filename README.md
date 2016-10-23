@@ -9,6 +9,8 @@ Some feature were borrowed from java library bulletml by Kenta Cho :
 
 www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
+[**DEMO**](http://codepen.io/Trung0246/pen/EgAyRZ)
+
 ## Feature:
 * Nothing, this library is currently being write.
 
