@@ -14,9 +14,10 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
 ## Changelog:
 * Added *vanish* command with 4 types.
-* Now only test bug.
+* Fixed bugs.
 
 ## TODO list:
+* Fix stack size bug when calling random
 * Add *function* compatibility
 * Add *count* projectile configs
 * Remove error handling.
