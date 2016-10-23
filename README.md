@@ -18,4 +18,5 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
 ## TODO list:
 * Add *function* compatibility
+* Add *count* projectile configs
 * Remove error handling.
