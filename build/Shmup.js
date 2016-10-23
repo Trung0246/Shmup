@@ -578,7 +578,7 @@
           }
           //Current position
           if (actionCommands.position.now) {
-            tempBullet.position.now = actionCommands.position.now;
+            tempBullet.position.now = actionCommands.position.now.slice();
           }
           //End position
           if (actionCommands.position.end) {
@@ -587,11 +587,11 @@
               tempBullet.change.direction = {};
             }
             //Check for change data
+            tempBullet.position.end = actionCommands.position.end.slice();
             tempBullet.change.direction.times = actionCommands.position.times || 1;
             tempBullet.change.direction.value = angleAtoB(tempBullet.position.now, actionCommands.position.end);
             tempBullet.change.direction.type = "plus";
             tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
-            tempBullet.change.position.end = actionCommands.position.end;
           } else if (actionCommands.direction) {
             //Check for action commands direction
             if (!actionCommands.direction) {
@@ -658,7 +658,7 @@
                 tempBullet.change.speed.vertical = {};
               }
               //Check for value
-              tempBullet.change.speed.vertical.value = actionCommands.speed.vertical.value || 1;
+              tempBullet.change.speed.vertical.value = actionCommands.speed.vertical.value || 0;
               //Check for type
               if (actionCommands.speed.vertical.type) {
                 tempBullet.change.speed.vertical.type = actionCommands.speed.vertical.type;
