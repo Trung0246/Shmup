@@ -19,6 +19,7 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Fixed bugs.
 
 ## TODO list:
+* Add *base* value for sequence
 * Fix stack size bug when calling random
 * Add *function* compatibility
 * Add *count* projectile configs
