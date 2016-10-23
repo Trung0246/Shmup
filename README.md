@@ -17,4 +17,5 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Now only test bug.
 
 ## TODO list:
+* Add *function* compatibility
 * Remove error handling.
