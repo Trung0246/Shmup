@@ -77,35 +77,17 @@ testing.actions("main", true, [
             type: "absolute",
           },
         },
-        //actionRef: "second",
       },
     ],
   },
 ]);
-testing.actions("second", false, [
-  {
-    func: "wait",
-    times: 50,
-  }, {
-    func: "change",
-    direction: {
-      value : 180,
-      times: 200,
-    },/*
-    speed: {
-      horizontal: {
-        value: -1,
-        times: 50,
-      },
-      vertical: {
-        value: -0.5,
-        times: 100,
-      },
-    },*/
-  },
-]);
 
 function gameLoop() {
+  context.fillStyle = '#000000';
+  context.beginPath();
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.closePath();
+  context.fill();
   testing.update();
   requestAnimFrame(gameLoop);
 }
@@ -126,61 +108,3 @@ HTMLCanvasElement.prototype.fitWindow = function() {
   window.addEventListener("resize", resize, false);
   resize();
 };
-
-/*var Scene = function(width, height) {
-  var canvas = document.getElementById("demo");
-  document.body.appendChild(canvas);
-  canvas.width = width;
-  canvas.height = height;
-  canvas.fitWindow();
-  this.context = canvas.getContext("2d");
-  this.context.textAlign = "right";
-  this.context.textBaseline = "top";
-  this.frame = 0;
-};
-Scene.prototype.start = function() {
-  var renderFrame = function() {
-    this.context.fillStyle = "black";
-    this.context.globalCompositeOperation = "source-over";
-    this.context.fillRect(0, 0, 300, 500);
-    this.context.globalCompositeOperation = "lighter";
-    for (var bulletCount = 0; bulletCount < bulletGroup.length; bulletCount ++) {
-      bulletGroup[bulletCount].sprite.draw(this.context);
-    }
-    testing.update();
-    this.context.fillStyle = "white";
-    this.frame += 1;
-    requestAnimFrame(renderFrame);
-  }.bind(this);
-  renderFrame();
-};
-
-var Circle = function(xy, radius, color) {
-  this.radius = radius;
-  this.x = xy[0];
-  this.y = xy[1];
-  this.color = color || "#ffffff";
-  this.canvas = document.createElement("canvas");
-  this.canvas.width = radius * 2;
-  this.canvas.height = radius * 2;
-  var context = this.canvas.getContext("2d");
-  context.globalCompositeOperation = "lighter";
-  context.fillStyle = this.color;
-  context.translate(radius, radius);
-  context.globalAlpha = 1.0;
-  context.arc(0, 0, radius, 0, Math.PI * 2, true);
-  this.parent = null;
-};
-Circle.prototype.draw = function(context) {
-  context.fillStyle = this.color;
-  context.save();
-  context.translate(this.x, this.y);
-  context.drawImage(this.canvas, -this.canvas.width * .5, -this.canvas.height * .5);
-  context.restore();
-};
-Circle.prototype.update = function(xy) {
-  this.x = xy[0];
-  this.y = xy[1];
-};
-
-var scene = new Scene(300, 500);*/
