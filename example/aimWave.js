@@ -96,7 +96,7 @@ testing.configs({
     orb: {
       type: "bullet",
       draw: function(tempBullet) {
-        context.fillStyle = '#' + Math.floor(Math.random() * 16777215).toString(16);
+        context.fillStyle = '#d22f33';
         context.beginPath();
         context.arc(tempBullet.position.now[0], tempBullet.position.now[1], 10, 0, Math.PI * 2, true );
         context.closePath();
@@ -199,10 +199,7 @@ testing.actions("third", false, [
   {
     func: "wait",
     times: 100,
-  }, /*{
-    func: "vanish",
-    type: "current",
-  }*/{
+  }, {
     func: "change",
     speed: {
       horizontal: {
@@ -250,6 +247,7 @@ function gameLoop() {
   player.y = Math.max(0, Math.min(player.y, sceneSize[1]));
   context.fillStyle = '#000000';
   context.beginPath();
+  context.clearRect(0, 0, canvas.width, canvas.height);
   context.arc(player.x, player.y, 5, 0, Math.PI * 2, true );
   context.closePath();
   context.fill();
