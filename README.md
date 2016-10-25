@@ -24,5 +24,7 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Fix stack size bug when calling random
 * Add *function* type input compatibility
 * Add *count* projectile configs
-* Add *vanishAll* for callback configs 
+* Add *vanishAll* for callback configs (or may return as object with commands with keys)
+* Add *pause* and *stop* commands
+* Add *reset* methods for sequence or reset something else?
 * Remove error handling.
