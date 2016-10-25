@@ -9,6 +9,8 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
 [**DEMO**](http://codepen.io/Trung0246/pen/EgAyRZ)
 
+[**WIKI**](https://github.com/Trung0246/Shmup/wiki)
+
 ## Feature:
 * Fire beautifully pattern as above.
 * Aim to target.
