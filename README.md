@@ -22,6 +22,7 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
 ## TODO list:
 * Add plugins
+* Replace current *target* key in configs to make it possible to aim multiple target when using with direction aim
 * Add new type of *wait* that if return *true* then continue action
 * Add *base* value for sequence
 * Fix stack size bug when calling random
