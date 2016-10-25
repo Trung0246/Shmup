@@ -1,7 +1,8 @@
 (function(window) {
   "use strict";
-  var VERSION = "1.0.8";
   /*
+  Shmup.js  v1.0.8
+  
   MIT License
 
   Copyright (c) 2016 Trung0246
