@@ -105,7 +105,7 @@ testing.configs({
       },
       callback: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
         //Check for out of bound
-        if (tempBullet.position.now[0] < 0 || sceneSize[0] < tempBullet.position.now[0] || tempBullet.position.now[1] < 0 || sceneSize[1] < tempBullet.position.now[1]) {
+        if (tempBullet.position.now[0] < -10 || sceneSize[0] + 10 < tempBullet.position.now[0] || tempBullet.position.now[1] < -10 || sceneSize[1] + 10 < tempBullet.position.now[1]) {
           return "vanish";
         }
       },
