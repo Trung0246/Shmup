@@ -38,7 +38,7 @@ testing.configs({
     orb: {
       type: "bullet",
       draw: function(tempBullet) {
-        context.fillStyle = '#' + Math.floor(Math.random() * 16777215).toString(16);
+        context.fillStyle = '#d22f33';
         context.beginPath();
         context.arc(tempBullet.position.now[0], tempBullet.position.now[1], 10, 0, Math.PI * 2, true );
         context.closePath();
