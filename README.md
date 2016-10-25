@@ -30,7 +30,7 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Add *function* type input compatibility
 * Add *count* projectile configs
 * Add *vanishAll* for callback configs (or may return as object with commands with keys)
-* Add *pause* and *stop* commands
-* Add *reset* methods for sequence or reset something else?
+* Add *pause* and *stop* methods
+* Add *reset* commands for sequence or reset something else?
 * Add *delete* methods for delete all bullet?
 * Remove error handling.
