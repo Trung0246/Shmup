@@ -28,6 +28,7 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Replace current *target* key in configs to make it possible to aim multiple target when using with direction aim
 * Add new type of direction *same* that fire multiple direction at same time based on angle (may not useful)
 * Add new type of *wait* that if return *true* then continue action
+* Add new fire type *aimSequence* (may not possible)
 * Add *count* bulletGroup (may not possible)
 * Add *vanishAll* for callback configs (or may return as object with commands with keys)
 * Make *update* commands to possible update only one action or multiple action if array of actions
