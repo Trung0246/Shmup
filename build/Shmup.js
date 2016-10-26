@@ -1,7 +1,7 @@
 (function(window) {
   "use strict";
   /*
-  Shmup.js  v1.0.8
+  Shmup.js v1.0.9
   
   MIT License
 
@@ -38,7 +38,6 @@
       init; //Constructor
   
   //-------------- COMMANDS ZONE --------------
-  //Command to set configs data to "flag[name]"
   commands.configs = function(configsData) {
     //Check error of "data"
     //checkError("", data);
@@ -48,13 +47,16 @@
       configsData.fire = {};
     }
     
+    //Loop for count
+    for (var bulletType in configsData.shot) {
+      configsData.shot[bulletType].count(0);
+    }
+    
     //Set new configs to "flag[name]"
     flag[name].configs = configsData;
     
     return this;
   };
-  
-  //Commands to set actions data to "flag[name]"
   commands.actions = function(actionLabel, isFire, actionData) {
     //Check error if "flag[name].configs" is defined
     //checkError("configs");
@@ -94,6 +96,14 @@
     //Set bullets label group
     if (!temp[name].bullets[actionLabel] && isFire) {
       temp[name].bullets[actionLabel] = {};
+    }
+    
+    //Add bullet count group
+    if (!temp[name].count) {
+      temp[name].count = {};
+    }
+    if (!temp[name].count[actionLabel] && isFire) {
+      temp[name].count[actionLabel] = {};
     }
     
     //Set fire group
@@ -153,7 +163,6 @@
     
     return this;
   };
-  
   commands.fire = function(actionLabel) {
     if (temp[name].isFiring[actionLabel] === false) {
       temp[name].isFiring[actionLabel] = true;
@@ -164,7 +173,6 @@
       throw new Error("Undefined actions of " + actionLabel);
     }
   };
-  
   commands.update = function() {
     //Process fire action label data
     for (var actionLabel in flag[name].actions.fire) {
@@ -213,6 +221,8 @@
             }
             //Draw bullet
             flag[name].configs.shot[tempBullet.type].draw(tempBullet);
+            //Set bullet temp type for count
+            var tempCountType = tempBullet.type;
             //Callback bullet
             if (flag[name].configs.shot[tempBullet.type].callback) {
               var tempData = flag[name].configs.shot[tempBullet.type].callback(tempBullet.actionRef || actionLabel, actionLabel, (function() {
@@ -234,6 +244,7 @@
                 //May add aptional feature here
               }
             }
+            flag[name].configs.shot[tempCountType].count(temp[name].count[actionLabel][tempCountType]);
           })();
         }
         //Remove all bullet that is null
@@ -248,7 +259,6 @@
       }
     }
   };
-  
   //------------- END COMMANDS ZONE -----------
   //--------------- METHODS ZONE --------------
   methods.actions = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
@@ -305,18 +315,19 @@
     }
   };
   methods.repeat = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
-    var actionType;
     //Check if label is defined
     if (!actionCommands.label) {
       actionCommands.label = randomString();
     }
+    //Check for function
+    var tempActionCommands = extendRun(actionCommands);
     tempCommands.push({
       actions: actionData[tempCommands[tempCommands.length- 1].location].actions,
       location: 0,
-      times: actionCommands.times,
-      label: actionCommands.label || (function() {
+      times: tempActionCommands.times,
+      label: tempActionCommands.label || (function() {
         var tempString = randomString();
-        actionCommands.label = tempString;
+        tempActionCommands.label = tempString;
         return tempString;
       })(),
     });
@@ -324,25 +335,45 @@
     return "repeat";
   };
   methods.wait = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
-    var actionType;
     //Check if label is defined
     if (!actionCommands.label) {
       actionCommands.label = randomString();
     }
+    //Check for function
+    var tempActionCommands = extendRun(actionCommands);
     if (actionLabel === mainActionLabel) {
-      temp[name].wait[actionLabel].label = actionCommands.label;
-      temp[name].wait[actionLabel].times = actionCommands.times;
+      temp[name].wait[actionLabel].label = tempActionCommands.label;
+      temp[name].wait[actionLabel].times = tempActionCommands.times;
     } else if (actionLabel !== mainActionLabel) {
-      tempBullet.wait.label = actionCommands.label;
-      tempBullet.wait.times = actionCommands.times;
+      tempBullet.wait.label = tempActionCommands.label;
+      tempBullet.wait.times = tempActionCommands.times;
     }
     tempCommands[tempCommands.length - 1].location ++;
     return "wait";
   };
   methods.fire = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
-    shot[flag[name].configs.shot[actionCommands.type].type].fire(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet);
+    //Check for label
+    if (!actionCommands.label) {
+      actionCommands.label = randomString();
+    }
+    //Check for function
+    var tempActionCommands = extendRun(actionCommands);
+    //Check for actionRef
+    if (tempActionCommands.fireRef) {
+      tempActionCommands.label = tempActionCommands.fireRef;
+      if (!tempActionCommands.type) {
+        tempActionCommands.type = temp[name].fire.data[actionLabel][tempActionCommands.label].type;
+      }
+    }
+    //Set bullet group
+    if (!temp[name].bullets[mainActionLabel][tempActionCommands.label]) {
+      temp[name].bullets[mainActionLabel][tempActionCommands.label] = [];
+    }
+    shot[flag[name].configs.shot[tempActionCommands.type].type].fire(actionLabel, mainActionLabel, actionData, tempCommands, tempActionCommands, tempBullet);
   };
   methods.vanish = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
+    //Check for function
+    var tempActionCommands = extendRun(actionCommands);
     //TODO: make fireRef first to do this one like to get data.
     shot[flag[name].configs.shot[(function() {
       //Check for mainAction
@@ -350,16 +381,16 @@
         return tempBullet.type;
       } else if (actionLabel === mainActionLabel) {
         //Check for label
-        if (actionCommands.label) {
-          return temp[name].fire.data[actionLabel][actionCommands.label].type;
+        if (tempActionCommands.label) {
+          return temp[name].fire.data[actionLabel][tempActionCommands.label].type;
         } else {
           throw new Error("Label must be defined in vanish main action");
         }
       }
-    })()].type].vanish(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet);
+    })()].type].vanish(actionLabel, mainActionLabel, actionData, tempCommands, tempActionCommands, tempBullet);
   };
   methods.change = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
-    shot[flag[name].configs.shot[tempBullet.type].type].change(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet);
+    shot[flag[name].configs.shot[tempBullet.type].type].change(actionLabel, mainActionLabel, actionData, tempCommands, extendRun(actionCommands), tempBullet);
   };
   methods.func = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
     actionCommands.callback(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet);
@@ -369,9 +400,87 @@
   //------------ --- SHOT ZONE ----------------
   shot.bullet = {
     fire: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBulletInput) {
-      //Set label
-      if (!actionCommands.label) {
-        actionCommands.label = randomString();
+      //Check for fireRef
+      if (actionCommands.fireRef) {
+        var tempData = temp[name].fire.data[actionLabel][actionCommands.label];
+        //Check for actionCommands if stuff is undefined
+        if (!actionCommands.movement && tempData.movement) {
+          actionCommands.movement = tempData.movement;
+        }
+        if (!actionCommands.position && tempData.position) {
+          actionCommands.position = extend(tempData.position);
+        } else if (actionCommands.position && tempData.position) {
+          if (!actionCommands.position.now && tempData.position.now) {
+            actionCommands.position.now = tempData.position.now.slice();
+          }
+          if (!actionCommands.position.end && tempData.position.end) {
+            actionCommands.position.end = tempData.position.now.slice();
+          }
+        }
+        if (!actionCommands.direction && tempData.direction) {
+          actionCommands.direction = extend(tempData.direction);
+        } else if (actionCommands.direction && tempData.direction) {
+          
+          if (typeof actionCommands.direction.value !== "number") {
+            actionCommands.direction.value = tempData.direction.value;
+          }
+          if (!actionCommands.direction.type) {
+            actionCommands.direction.type = tempData.direction.type;
+          }
+        } else if (!actionCommands.movement && !actionCommands.position.end) {
+          actionCommands.direction = {
+            value: 0,
+            type: "absolute",
+          };
+        }
+        if (!actionCommands.speed && tempData.speed) {
+          actionCommands.speed = tempData.speed;
+        } else if (actionCommands.speed && tempData.speed) {
+          if (!actionCommands.speed.horizontal && tempData.speed.horizontal) {
+            actionCommands.speed.horizontal = tempData.speed.horizontal;
+          } else if (actionCommands.speed.horizontal && tempData.speed.horizontal) {
+            if (typeof actionCommands.speed.horizontal.value !== "number") {
+              actionCommands.speed.horizontal.value = tempData.speed.horizontal.value;
+            }
+            if (!actionCommands.speed.horizontal.type) {
+              actionCommands.speed.horizontal.type = tempData.speed.horizontal.type;
+            }
+          } else {
+            actionCommands.speed.horizontal = {
+              value: 1,
+              type: "absolute",
+            };
+          }
+          if (!actionCommands.speed.vertical && tempData.speed.vertical) {
+            actionCommands.speed.vertical = tempData.speed.vertical;
+          } else if (actionCommands.speed.vertical && tempData.speed.vertical) {
+            if (typeof actionCommands.speed.vertical.value !== "number") {
+              actionCommands.speed.vertical.value = tempData.speed.vertical.value;
+            }
+            if (!actionCommands.speed.vertical.type) {
+              actionCommands.speed.vertical.type = tempData.speed.vertical.type;
+            }
+          } else {
+            actionCommands.speed.vertical = {
+              value: 1,
+              type: "absolute",
+            };
+          }
+        } else if (!actionCommands.movement) {
+          actionCommands.speed = {
+            horizontal: {
+              value: 1,
+              type: "absolute",
+            },
+            vertical: {
+              value: 1,
+              type: "absolute",
+            },
+          };
+        }
+        if (!actionCommands.actionRef && tempData.actionRef) {
+          actionCommands.actionRef = tempData.actionRef;
+        }
       }
       //Check fire label to set to fireRef
       if (!temp[name].fire.data[actionLabel][actionCommands.label]) {
@@ -380,19 +489,8 @@
         delete temp[name].fire.data[actionLabel][actionCommands.label].label;
         delete temp[name].fire.data[actionLabel][actionCommands.label].func;
       }
-      //Set bullet group
-      if (!temp[name].bullets[mainActionLabel][actionCommands.label]) {
-        temp[name].bullets[mainActionLabel][actionCommands.label] = [];
-      }
       //Set fire group
       if (!temp[name].fire.temp[actionLabel][actionCommands.label]) {
-        /*temp[name].fire.temp[actionLabel][actionCommands.label] = {
-          direction: undefined,
-          speed: {
-            horizontal: 0,
-            vertical: 0
-          }
-        };*/
         temp[name].fire.temp[actionLabel][actionCommands.label] = {
           direction: {
             value: undefined,
@@ -400,14 +498,14 @@
           },
           speed: {
             horizontal: {
-              value: 0,
+              value: undefined,
               base: 0,
             },
             vertical: {
-              value: 0,
+              value: undefined,
               base: 0,
             },
-          }
+          },
         };
       }
       //Create new bullet
@@ -421,6 +519,12 @@
         flag: randomString(),
         count: 0,
       };
+      //Set count group to plus
+      if (typeof temp[name].count[mainActionLabel][actionCommands.type] !== "number") {
+        temp[name].count[mainActionLabel][actionCommands.type] = 1;
+      } else {
+        temp[name].count[mainActionLabel][actionCommands.type] ++;
+      }
       //Check for actionRef
       if (actionCommands.actionRef) {
         tempBullet.actionRef = actionCommands.actionRef;
@@ -464,14 +568,14 @@
             }
             break;
             case "sequence": {
-              if (!temp[name].fire.temp[actionLabel][actionCommands.label].direction.value || typeof temp[name].fire.temp[actionLabel][actionCommands.label].direction.value !== "number") {
+              if (typeof temp[name].fire.temp[actionLabel][actionCommands.label].direction.value !== "number") {
                 //Check for base
                 if (actionCommands.direction.base) {
                   temp[name].fire.temp[actionLabel][actionCommands.label].direction.base = actionCommands.direction.base;
                 } else {
                   temp[name].fire.temp[actionLabel][actionCommands.label].direction.base = 0;
                 }
-                temp[name].fire.temp[actionLabel][actionCommands.label].direction.value = actionCommands.direction.value + temp[name].fire.temp[actionLabel][actionCommands.label].direction.base;
+                temp[name].fire.temp[actionLabel][actionCommands.label].direction.value = temp[name].fire.temp[actionLabel][actionCommands.label].direction.base;
               } else if (typeof temp[name].fire.temp[actionLabel][actionCommands.label].direction.value === "number") {
                 temp[name].fire.temp[actionLabel][actionCommands.label].direction.value += actionCommands.direction.value;
               }
@@ -506,14 +610,14 @@
             }
             break;
             case "sequence": {
-              if (!temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value || typeof temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value !== "number") {
+              if (typeof temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value !== "number") {
                 //Check for base
                 if (actionCommands.speed.horizontal.base) {
                   temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.base = actionCommands.speed.horizontal.base;
                 } else {
                   temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.base = 0;
                 }
-                temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value = actionCommands.speed.horizontal.value + temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.base;
+                temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value = temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.base;
               } else if (typeof temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value === "number") {
                 temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value += actionCommands.speed.horizontal.value;
               }
@@ -540,14 +644,14 @@
             }
             break;
             case "sequence": {
-              if (!temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value || typeof temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value !== "number") {
+              if (typeof temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value !== "number") {
                 //Check for base
                 if (actionCommands.speed.horizontal.base) {
                   temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.base = actionCommands.speed.vertical.base;
                 } else {
                   temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.base = 0;
                 }
-                temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value = actionCommands.speed.vertical.value + temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.base;
+                temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value = temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.base;
               } else if (typeof temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value === "number") {
                 temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value += actionCommands.speed.vertical.value;
               }
@@ -788,12 +892,14 @@
       })();
       switch (actionCommands.type) {
         case "current": {
+          temp[name].count[mainActionLabel][tempBullet.type] --;
           flag[name].configs.shot[tempType].vanish(bulletGroup[tempBullet.count]);
           bulletGroup[tempBullet.count] = null;
         }
         break;
         case "first": {
           for (bulletCount = 0; bulletCount < actionCommands.value; bulletCount ++) {
+            temp[name].count[mainActionLabel][bulletGroup[bulletCount].type] --;
             flag[name].configs.shot[tempType].vanish(bulletGroup[bulletCount]);
             bulletGroup[bulletCount] = null;
           }
@@ -801,6 +907,7 @@
         break;
         case "last": {
           for (bulletCount = 0; bulletCount < actionCommands.value; bulletCount ++) {
+            temp[name].count[mainActionLabel][bulletGroup[tempIndex].type] --;
             flag[name].configs.shot[tempType].vanish(bulletGroup[tempIndex]);
             bulletGroup[tempIndex] = null;
             tempIndex --;
@@ -817,6 +924,7 @@
                 break;
               }
             } while (bulletGroup[tempIndex] === null);
+            temp[name].count[mainActionLabel][bulletGroup[tempIndex].type] --;
             flag[name].configs.shot[tempType].vanish(bulletGroup[tempIndex]);
             bulletGroup[tempIndex] = null;
           }
@@ -824,6 +932,7 @@
         break;
         default: {
           for (bulletCount = 0; bulletCount < bulletGroup.length; bulletCount ++) {
+            temp[name].count[mainActionLabel][bulletGroup[bulletCount].type] --;
             flag[name].configs.shot[tempType].vanish(bulletGroup[bulletCount]);
             bulletGroup[bulletCount] = null;
           }
@@ -877,6 +986,22 @@
     to = to || new from.constructor();
     for (var name in from) {
       to[name] = typeof to[name] == "undefined" ? extend(from[name], null) : to[name];
+    }
+    return to;
+  }
+  function extendRun(from, to) {
+    if (from == null || typeof from != "object") {
+      return from;
+    }
+    if (from.constructor != Object && from.constructor != Array) {
+      return from;
+    }
+    if (from.constructor == Date || from.constructor == RegExp || from.constructor == Function || from.constructor == String || from.constructor == Number || from.constructor == Boolean) {
+      return new from.constructor(from)
+    }
+    to = to || new from.constructor();
+    for (var name in from) {
+      to[name] = typeof to[name] == "undefined" ? typeof from[name] === "function" ? from[name]() : extendRun(from[name], null) : to[name];
     }
     return to;
   }
