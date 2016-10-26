@@ -1,7 +1,7 @@
 # Shmup
 A library for bullet hell in Javascript
 
-Development version: **1.0.8**
+Development version: **1.0.9**
 
 This is a development branch, [please go to stable branch for stable version](https://github.com/Trung0246/Shmup/tree/stable).
 
@@ -17,19 +17,20 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Nothing, this library is currently being write.
 
 ## Changelog:
-* Added *base* key for sequence.
-* Added new example *Wings*.
-* Fixed action error that final action did not run.
-* Fixed stack size bug when calling random.
+* Changed *base* key behavior
+* Added *function* type input compatibility
+* Added *fireRef* key for *fire* commands
+* Added *count* projectile configs
 * Fixed bugs.
 
 ## TODO list:
 * Add plugins
 * Replace current *target* key in configs to make it possible to aim multiple target when using with direction aim
+* Add new type of direction type *same* to fire multiple direction at same time based on angle (may nonsense)
 * Add new type of *wait* that if return *true* then continue action
-* Add *function* type input compatibility
-* Add *count* projectile configs
+* Add *count* bulletGroup (may not possible)
 * Add *vanishAll* for callback configs (or may return as object with commands with keys)
+* Make *update* commands to possible update only one action or multiple action if array of actions
 * Add *pause* and *stop* methods
 * Add *reset* commands for sequence or reset something else?
 * Add *delete* methods for delete all bullet?
