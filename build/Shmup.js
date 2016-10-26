@@ -102,9 +102,6 @@
     if (!temp[name].count) {
       temp[name].count = {};
     }
-    if (!temp[name].count[actionLabel] && isFire) {
-      temp[name].count[actionLabel] = {};
-    }
     
     //Set fire group
     if (!temp[name].fire) {
@@ -244,7 +241,7 @@
                 //May add aptional feature here
               }
             }
-            flag[name].configs.shot[tempCountType].count(temp[name].count[actionLabel][tempCountType]);
+            flag[name].configs.shot[tempCountType].count(temp[name].count[tempCountType]);
           })();
         }
         //Remove all bullet that is null
@@ -520,10 +517,10 @@
         count: 0,
       };
       //Set count group to plus
-      if (typeof temp[name].count[mainActionLabel][actionCommands.type] !== "number") {
-        temp[name].count[mainActionLabel][actionCommands.type] = 1;
+      if (typeof temp[name].count[tempBullet.type] !== "number") {
+        temp[name].count[tempBullet.type] = 1;
       } else {
-        temp[name].count[mainActionLabel][actionCommands.type] ++;
+        temp[name].count[tempBullet.type] ++;
       }
       //Check for actionRef
       if (actionCommands.actionRef) {
@@ -615,7 +612,7 @@
                 if (actionCommands.speed.horizontal.base) {
                   temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.base = actionCommands.speed.horizontal.base;
                 } else {
-                  temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.base = 0;
+                  temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.base = 1;
                 }
                 temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value = temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.base;
               } else if (typeof temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value === "number") {
@@ -649,7 +646,7 @@
                 if (actionCommands.speed.horizontal.base) {
                   temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.base = actionCommands.speed.vertical.base;
                 } else {
-                  temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.base = 0;
+                  temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.base = 1;
                 }
                 temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value = temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.base;
               } else if (typeof temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value === "number") {
@@ -892,14 +889,14 @@
       })();
       switch (actionCommands.type) {
         case "current": {
-          temp[name].count[mainActionLabel][tempBullet.type] --;
+          temp[name].count[tempBullet.type] --;
           flag[name].configs.shot[tempType].vanish(bulletGroup[tempBullet.count]);
           bulletGroup[tempBullet.count] = null;
         }
         break;
         case "first": {
           for (bulletCount = 0; bulletCount < actionCommands.value; bulletCount ++) {
-            temp[name].count[mainActionLabel][bulletGroup[bulletCount].type] --;
+            temp[name].count[bulletGroup[bulletCount].type] --;
             flag[name].configs.shot[tempType].vanish(bulletGroup[bulletCount]);
             bulletGroup[bulletCount] = null;
           }
@@ -907,7 +904,7 @@
         break;
         case "last": {
           for (bulletCount = 0; bulletCount < actionCommands.value; bulletCount ++) {
-            temp[name].count[mainActionLabel][bulletGroup[tempIndex].type] --;
+            temp[name].count[bulletGroup[tempIndex].type] --;
             flag[name].configs.shot[tempType].vanish(bulletGroup[tempIndex]);
             bulletGroup[tempIndex] = null;
             tempIndex --;
@@ -924,7 +921,7 @@
                 break;
               }
             } while (bulletGroup[tempIndex] === null);
-            temp[name].count[mainActionLabel][bulletGroup[tempIndex].type] --;
+            temp[name].count[bulletGroup[tempIndex].type] --;
             flag[name].configs.shot[tempType].vanish(bulletGroup[tempIndex]);
             bulletGroup[tempIndex] = null;
           }
@@ -932,7 +929,7 @@
         break;
         default: {
           for (bulletCount = 0; bulletCount < bulletGroup.length; bulletCount ++) {
-            temp[name].count[mainActionLabel][bulletGroup[bulletCount].type] --;
+            temp[name].count[bulletGroup[bulletCount].type] --;
             flag[name].configs.shot[tempType].vanish(bulletGroup[bulletCount]);
             bulletGroup[bulletCount] = null;
           }
