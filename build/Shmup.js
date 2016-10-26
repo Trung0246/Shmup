@@ -998,7 +998,7 @@
     }
     to = to || new from.constructor();
     for (var name in from) {
-      to[name] = typeof to[name] == "undefined" ? typeof from[name] === "function" ? from[name]() : extendRun(from[name], null) : to[name];
+      to[name] = typeof to[name] == "undefined" ? typeof from[name] === "function" ? name === "movement" ? from[name] : from[name]() : extendRun(from[name], null) : to[name];
     }
     return to;
   }
