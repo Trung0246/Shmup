@@ -30,6 +30,7 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Add new type of direction *same* that fire multiple direction at same time based on angle (may not useful)
 * Add new fire type *aimSequence* (may not possible)
 * Add *count* bulletGroup (may not possible)
+* made *fire* command to possible fire multiple action at one call
 * Add *pause* and *stop* methods
 * Add *reset* commands for sequence or reset something else?
 * Add *delete* methods for delete all bullet?
