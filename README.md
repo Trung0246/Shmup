@@ -21,7 +21,7 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Replaced current *target* key in configs to make it possible to aim multiple target when using with direction aim
 * Added new type of *wait* called *manual* that if return *true* then continue action
 * Replaced callback configs with normal commands to make more freedom
-* Fixed *vanish* bug when calling *first* and *last* have value larger then bulletGroup length
+* Fixed *vanish* bug when calling *first* and *last* have value larger than bulletGroup length
 * Made *update* commands to possible update defined array of actions
 * Fixed bugs.
 
