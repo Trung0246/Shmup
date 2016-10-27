@@ -1,7 +1,7 @@
 (function(window) {
   "use strict";
   /*
-  Shmup.js v1.0.9
+  Shmup.js v1.0.10
   
   MIT License
 
@@ -66,6 +66,11 @@
     //Check if actions if defined
     if (!flag[name].actions) {
       flag[name].actions = {};
+    }
+    
+    //Check for frame data
+    if (!temp[name].frame) {
+      temp[name].frame = 0;
     }
     
     //Set actionData to label main action, else set to secondary action
@@ -174,15 +179,20 @@
     //Process fire action label data
     for (var actionLabel in flag[name].actions.fire) {
       if (temp[name].isFiring[actionLabel] === true) {
-        if (temp[name].wait[actionLabel].times > 0) {
-          temp[name].wait[actionLabel].times --;
-        }
-        if ((temp[name].wait[actionLabel].times <= 0 || temp[name].wait[actionLabel].times === undefined)) {
-          //Process to set wait label done to true
-          if (temp[name].wait[actionLabel].times <= 0) {
-            temp[name].wait[actionLabel].times = undefined;
-            //temp[name].wait.fire[actionLabel][temp[name].wait[actionLabel].label].done = true;
+        //Check for manual
+        if (temp[name].wait[actionLabel].type !== "manual") {
+          if (temp[name].wait[actionLabel].times > 0) {
+            temp[name].wait[actionLabel].times --;
           }
+          if ((temp[name].wait[actionLabel].times <= 0 || temp[name].wait[actionLabel].times === undefined)) {
+            //Process to set wait label done to true
+            if (temp[name].wait[actionLabel].times <= 0) {
+              temp[name].wait[actionLabel].times = undefined;
+              //temp[name].wait.fire[actionLabel][temp[name].wait[actionLabel].label].done = true;
+            }
+            methods.actions(actionLabel, actionLabel, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel], undefined, undefined);
+          }
+        } else if (temp[name].wait[actionLabel].times() === true) {
           methods.actions(actionLabel, actionLabel, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel], undefined, undefined);
         }
       }
@@ -203,17 +213,22 @@
             tempBullet.count = bulletCount;
             //Process actionRef
             if (tempBullet.actionRef) {
-              if (tempBullet.wait.times > 0) {
-                tempBullet.wait.times --;
-              }
-              if ((tempBullet.wait.times <= 0 || tempBullet.wait.times === undefined)) {
-                //Process to set wait label done to true
-                if (tempBullet.wait.times <= 0) {
-                  tempBullet.wait.times = undefined;
+              if (tempBullet.wait.type !== "manual") {
+                if (tempBullet.wait.times > 0) {
+                  tempBullet.wait.times --;
                 }
-                if (tempBullet.commands.length > 0) {
-                  methods.actions(tempBullet.actionRef, actionLabel, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, undefined, tempBullet);
+                if ((tempBullet.wait.times <= 0 || tempBullet.wait.times === undefined)) {
+                  //Process to set wait label done to true
+                  if (tempBullet.wait.times <= 0) {
+                    tempBullet.wait.times = undefined;
+                  }
+                  if (tempBullet.commands.length > 0) {
+                    methods.actions(tempBullet.actionRef, actionLabel, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, undefined, tempBullet);
+                  }
                 }
+              } else if (tempBullet.wait.times() === true) {
+                tempBullet.wait.times = undefined;
+                methods.actions(tempBullet.actionRef, actionLabel, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, undefined, tempBullet);
               }
             }
             //Draw bullet
@@ -229,16 +244,21 @@
                   return undefined;
                 }
               })(), tempBullet.commands, undefined, tempBullet);
+              //Prevent object no key bug
+              if (!tempData) {
+                tempData = {};
+              }
               //Process return
-              switch (tempData) {
+              /*switch (tempData.func) {
                 case "vanish": {
                   //flag[name].configs.shot[tempBullet.type].vanish(bulletGroup[bulletCount]);
-                  shot[flag[name].configs.shot[tempBullet.type].type].vanish(tempBullet.actionRef, actionLabel, undefined, undefined, {
-                    type: "current",
-                  }, tempBullet);//, bulletCount, bulletGroup);
+                  //shot[flag[name].configs.shot[tempBullet.type].type].vanish(tempBullet.actionRef, actionLabel, undefined, undefined, tempData, tempBullet);//, bulletCount, bulletGroup);
                 }
                 break;
                 //May add aptional feature here
+              }*/
+              if (tempData.func) {
+                methods[tempData.func](tempBullet.actionRef, actionLabel, undefined, undefined, tempData, tempBullet);
               }
             }
             flag[name].configs.shot[tempCountType].count(temp[name].count[tempCountType]);
@@ -255,6 +275,9 @@
         }
       }
     }
+    //Plus a frame then return it
+    temp[name].frame ++;
+    flag[name].configs.frame(temp[name].frame);
   };
   //------------- END COMMANDS ZONE -----------
   //--------------- METHODS ZONE --------------
@@ -338,12 +361,17 @@
     }
     //Check for function
     var tempActionCommands = extendRun(actionCommands);
+    if (tempActionCommands.type === "manual") {
+      tempActionCommands = extendWait(actionCommands);
+    }
     if (actionLabel === mainActionLabel) {
       temp[name].wait[actionLabel].label = tempActionCommands.label;
       temp[name].wait[actionLabel].times = tempActionCommands.times;
+      temp[name].wait[actionLabel].type = tempActionCommands.type;
     } else if (actionLabel !== mainActionLabel) {
       tempBullet.wait.label = tempActionCommands.label;
       tempBullet.wait.times = tempActionCommands.times;
+      tempBullet.wait.type = tempActionCommands.type;
     }
     tempCommands[tempCommands.length - 1].location ++;
     return "wait";
@@ -417,12 +445,17 @@
         if (!actionCommands.direction && tempData.direction) {
           actionCommands.direction = extend(tempData.direction);
         } else if (actionCommands.direction && tempData.direction) {
-          
           if (typeof actionCommands.direction.value !== "number") {
             actionCommands.direction.value = tempData.direction.value;
           }
+          if (typeof actionCommands.direction.base !== "number") {
+            actionCommands.direction.base = tempData.direction.base;
+          }
           if (!actionCommands.direction.type) {
             actionCommands.direction.type = tempData.direction.type;
+          }
+          if (!actionCommands.direction.target) {
+            actionCommands.direction.target = tempData.direction.target;
           }
         } else if (!actionCommands.movement && !actionCommands.position.end) {
           actionCommands.direction = {
@@ -439,6 +472,9 @@
             if (typeof actionCommands.speed.horizontal.value !== "number") {
               actionCommands.speed.horizontal.value = tempData.speed.horizontal.value;
             }
+            if (typeof actionCommands.speed.horizontal.base !== "number") {
+              actionCommands.speed.horizontal.base = tempData.speed.horizontal.base;
+            }
             if (!actionCommands.speed.horizontal.type) {
               actionCommands.speed.horizontal.type = tempData.speed.horizontal.type;
             }
@@ -453,6 +489,9 @@
           } else if (actionCommands.speed.vertical && tempData.speed.vertical) {
             if (typeof actionCommands.speed.vertical.value !== "number") {
               actionCommands.speed.vertical.value = tempData.speed.vertical.value;
+            }
+            if (typeof actionCommands.speed.horizontal.base !== "number") {
+              actionCommands.speed.horizontal.base = tempData.speed.horizontal.base;
             }
             if (!actionCommands.speed.vertical.type) {
               actionCommands.speed.vertical.type = tempData.speed.vertical.type;
@@ -557,7 +596,7 @@
           }
           switch (actionCommands.direction.type) {
             case "aim": {
-              tempBullet.direction.value = angleAtoB(tempBullet.position.now, flag[name].configs.target()) + (actionCommands.direction.value || 0);
+              tempBullet.direction.value = angleAtoB(tempBullet.position.now, flag[name].configs.target[actionCommands.direction.target]()) + (actionCommands.direction.value || 0);
             }
             break;
             case "absolute": {
@@ -887,54 +926,70 @@
           }
         }
       })();
-      switch (actionCommands.type) {
-        case "current": {
-          temp[name].count[tempBullet.type] --;
-          flag[name].configs.shot[tempType].vanish(bulletGroup[tempBullet.count]);
-          bulletGroup[tempBullet.count] = null;
-        }
-        break;
-        case "first": {
-          for (bulletCount = 0; bulletCount < actionCommands.value; bulletCount ++) {
-            temp[name].count[bulletGroup[bulletCount].type] --;
-            flag[name].configs.shot[tempType].vanish(bulletGroup[bulletCount]);
-            bulletGroup[bulletCount] = null;
+      (function mainVanish() {
+        switch (actionCommands.type) {
+          case "current": {
+            temp[name].count[tempBullet.type] --;
+            flag[name].configs.shot[tempType].vanish(bulletGroup[tempBullet.count]);
+            bulletGroup[tempBullet.count] = null;
           }
-        }
-        break;
-        case "last": {
-          for (bulletCount = 0; bulletCount < actionCommands.value; bulletCount ++) {
-            temp[name].count[bulletGroup[tempIndex].type] --;
-            flag[name].configs.shot[tempType].vanish(bulletGroup[tempIndex]);
-            bulletGroup[tempIndex] = null;
-            tempIndex --;
-          }
-        }
-        break;
-        case "random": {
-          for (bulletCount = 0; bulletCount < actionCommands.value; bulletCount ++) {
-            do {
-              tempIndex = Math.floor(Math.random() * bulletGroup.length);
-              if (bulletGroup.every(function(bulletData) {
-                return bulletData === null;
-              })) {
+          break;
+          case "first": {
+            for (bulletCount = 0; bulletCount < actionCommands.value; bulletCount ++) {
+              if (bulletGroup.length < actionCommands.value) {
+                actionCommands = {
+                  type: "all",
+                };
+                mainVanish();
                 break;
               }
-            } while (bulletGroup[tempIndex] === null);
-            temp[name].count[bulletGroup[tempIndex].type] --;
-            flag[name].configs.shot[tempType].vanish(bulletGroup[tempIndex]);
-            bulletGroup[tempIndex] = null;
+              temp[name].count[bulletGroup[bulletCount].type] --;
+              flag[name].configs.shot[tempType].vanish(bulletGroup[bulletCount]);
+              bulletGroup[bulletCount] = null;
+            }
+          }
+          break;
+          case "last": {
+            for (bulletCount = 0; bulletCount < actionCommands.value; bulletCount ++) {
+              if (bulletGroup.length < actionCommands.value) {
+                actionCommands = {
+                  type: "all",
+                };
+                mainVanish();
+                break;
+              }
+              temp[name].count[bulletGroup[tempIndex].type] --;
+              flag[name].configs.shot[tempType].vanish(bulletGroup[tempIndex]);
+              bulletGroup[tempIndex] = null;
+              tempIndex --;
+            }
+          }
+          break;
+          case "random": {
+            for (bulletCount = 0; bulletCount < actionCommands.value; bulletCount ++) {
+              do {
+                tempIndex = Math.floor(Math.random() * bulletGroup.length);
+                if (bulletGroup.every(function(bulletData) {
+                  return bulletData === null;
+                })) {
+                  break;
+                }
+              } while (bulletGroup[tempIndex] === null);
+              temp[name].count[bulletGroup[tempIndex].type] --;
+              flag[name].configs.shot[tempType].vanish(bulletGroup[tempIndex]);
+              bulletGroup[tempIndex] = null;
+            }
+          }
+          break;
+          default: {
+            for (bulletCount = 0; bulletCount < bulletGroup.length; bulletCount ++) {
+              temp[name].count[bulletGroup[bulletCount].type] --;
+              flag[name].configs.shot[tempType].vanish(bulletGroup[bulletCount]);
+              bulletGroup[bulletCount] = null;
+            }
           }
         }
-        break;
-        default: {
-          for (bulletCount = 0; bulletCount < bulletGroup.length; bulletCount ++) {
-            temp[name].count[bulletGroup[bulletCount].type] --;
-            flag[name].configs.shot[tempType].vanish(bulletGroup[bulletCount]);
-            bulletGroup[bulletCount] = null;
-          }
-        }
-      }
+      })();
     },
   };
   //-------------- END SHOT ZONE --------------
@@ -1001,6 +1056,42 @@
       to[name] = typeof to[name] == "undefined" ? typeof from[name] === "function" ? name === "movement" ? from[name] : from[name]() : extendRun(from[name], null) : to[name];
     }
     return to;
+  }
+  function extendWait(fromwhat, isKeep) {
+    var key;
+    function betaRun(from, to) {
+      if (from == null || typeof from != "object") {
+        return from;
+      }
+      if (from.constructor != Object && from.constructor != Array) {
+        return from;
+      }
+      if (from.constructor == Date || from.constructor == RegExp || from.constructor == Function || from.constructor == String || from.constructor == Number || from.constructor == Boolean) {
+        return new from.constructor(from)
+      }
+      to = to || new from.constructor();
+      for (var name in from) {
+        to[name] = typeof to[name] == "undefined" ? typeof from[name] === "function" ? (function() {
+          if (key === "direction" && name === "movement") {
+            return from[name];
+          }
+          if (key === "wait" && name === "times") {
+            return from[name];
+          }
+          return from[name]();
+        })() : betaRun(from[name], null, (function() {
+          if (name === "func" && from[name] === "wait" && key === undefined) {
+            key = "wait";
+          }
+          if (name === "func" && from[name] === "direction" && key === undefined) {
+            key = "direction";
+          }
+          return undefined;
+        })()) : to[name];
+      }
+      return to;
+    }
+    return betaRun(fromwhat);
   }
   //Math function
   function getAngle(angle) {
