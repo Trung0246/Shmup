@@ -131,10 +131,7 @@
     //Set temp commands
     if (!temp[name].commands) {
       temp[name].commands = {};
-    }/*
-    if (!temp[name].commands[actionLabel]) {
-      temp[name].commands[actionLabel] = undefined;
-    }*/
+    }
     if (!temp[name].commands[actionLabel]) {
       temp[name].commands[actionLabel] = [{
         location: 0,
@@ -175,9 +172,23 @@
       throw new Error("Undefined actions of " + actionLabel);
     }
   };
-  commands.update = function() {
-    //Process fire action label data
-    for (var actionLabel in flag[name].actions.fire) {
+  commands.update = function(actionLabelData) {
+    //Check for arguments
+    if (typeof actionLabelData === "undefined") {
+      for (var currentActionLabel in flag[name].actions.fire) {
+        updateAction(currentActionLabel);
+      }
+    } else if (actionLabelData.length > 0) {
+      for (var indexActionLabel = 0; indexActionLabel < actionLabelData.length; indexActionLabel ++) {
+        updateAction(actionLabelData[indexActionLabel]);
+      }
+    } else {
+      throw new Error("No action to update");
+    }
+    //Plus a frame then return it
+    temp[name].frame ++;
+    flag[name].configs.frame(temp[name].frame);
+    function updateAction(actionLabel) {
       if (temp[name].isFiring[actionLabel] === true) {
         //Check for manual
         if (temp[name].wait[actionLabel].type !== "manual") {
@@ -249,14 +260,6 @@
                 tempData = {};
               }
               //Process return
-              /*switch (tempData.func) {
-                case "vanish": {
-                  //flag[name].configs.shot[tempBullet.type].vanish(bulletGroup[bulletCount]);
-                  //shot[flag[name].configs.shot[tempBullet.type].type].vanish(tempBullet.actionRef, actionLabel, undefined, undefined, tempData, tempBullet);//, bulletCount, bulletGroup);
-                }
-                break;
-                //May add aptional feature here
-              }*/
               if (tempData.func) {
                 methods[tempData.func](tempBullet.actionRef, actionLabel, undefined, undefined, tempData, tempBullet);
               }
@@ -275,9 +278,6 @@
         }
       }
     }
-    //Plus a frame then return it
-    temp[name].frame ++;
-    flag[name].configs.frame(temp[name].frame);
   };
   //------------- END COMMANDS ZONE -----------
   //--------------- METHODS ZONE --------------
