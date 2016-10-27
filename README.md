@@ -17,20 +17,18 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Nothing, this library is currently being write.
 
 ## Changelog:
-* Changed *base* key behavior
-* Added *function* type input compatibility
-* Added *fireRef* key for *fire* commands
-* Added *count* projectile configs
+* Added *frame* configs count
+* Replaced current *target* key in configs to make it possible to aim multiple target when using with direction aim
+* Added new type of *wait* called *manual* that if return *true* then continue action
+* Replaced callback configs with normal commands to make more freedom
+* Fixed *vanish* bug when calling *first* and *last* have value larger then bulletGroup length
 * Fixed bugs.
 
 ## TODO list:
 * Add plugins
-* Replace current *target* key in configs to make it possible to aim multiple target when using with direction aim
 * Add new type of direction *same* that fire multiple direction at same time based on angle (may not useful)
-* Add new type of *wait* that if return *true* then continue action
 * Add new fire type *aimSequence* (may not possible)
 * Add *count* bulletGroup (may not possible)
-* Add *vanishAll* for callback configs (or may return as object with commands with keys)
 * Make *update* commands to possible update only one action or multiple action if array of actions
 * Add *pause* and *stop* methods
 * Add *reset* commands for sequence or reset something else?
