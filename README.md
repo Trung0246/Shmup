@@ -18,13 +18,13 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
 ## Changelog:
 * Made *fire* command to possible fire multiple action at one call
-* Added new *target* key for sequence, like *aim*
-* Added *reset* method for reset fire sequence
-* Added *freeze* and *run* commands for bullets
-* Added *pause* and *stop* methods for actions
+* Added new *target* key for *sequence*, like *aim*
+* Added *reset* method for reset fire sequence with value
+* Added *freeze* and *continue* commands for bullets
+* Added *pause*, *run* and *stop* methods for actions
 * Added *clear* method for delete all bullet with specific actionLabel
 * Added *freeze* command for freezing bullet
-* Fixed bugs.
+* Fixed bugs
 
 ## TODO list:
 * Add plugins
