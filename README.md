@@ -33,4 +33,5 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Compress *extend* function to one (may not possible)
 * Add shortcut function to reduce letter need to type to execute methods
 * Fix *multiply* type to make it possible like *plus*
+* Add *aim* type for *change* method
 * Remove error handling
