@@ -4,7 +4,7 @@
   https://github.com/Trung0246/Shmup/new/master/plugins
 */
 
-var MD = {};
+var MD = {}; //For plugins
 MD.rp = function(times, actions) {
   return {
     func: "repeat",
@@ -19,13 +19,15 @@ MD.w = function(type, times) {
     times: times,
   };
 };
-MD.fr = function(type, label, movement, position, direction, speed) {
+MD.fr = function(type, label, movement, position, direction, speed, actionRef, fireRef) {
   if (typeof movement === "function") {
     return {
       func: "fire",
       type: type,
       label: label,
       movement: movement,
+      actionRef: actionRef,
+      fireRef: fireRef,
     };
   } else {
     return {
@@ -35,6 +37,8 @@ MD.fr = function(type, label, movement, position, direction, speed) {
       position: position,
       direction: direction,
       speed: speed,
+      actionRef: actionRef,
+      fireRef: fireRef,
     };
   }
 };
@@ -115,7 +119,7 @@ MD.cs = function(HValue, HTimes, HType, VValue, VTimes, VType) {
       type: HType,
     },
     vertical: {
-      value: Vvalue,
+      value: VValue,
       times: VTimes,
       type: VType,
     },
