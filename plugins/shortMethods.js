@@ -1,10 +1,10 @@
 /*
-  shortMethods.js v0.0.2
-  For Shmup.js 1.0.11 and newer
+  shortMethods.js v0.0.3
+  For Shmup.js 1.0.12 and newer
   https://github.com/Trung0246/Shmup/new/master/plugins
 */
 
-var MD = {}; //For plugins
+var MD = {};
 MD.rp = function(times, actions) {
   return {
     func: "repeat",
@@ -104,11 +104,12 @@ MD.cp = function(now, end, times) {
     times: times,
   };
 };
-MD.cd = function(value, times, type) {
+MD.cd = function(value, times, type, target) {
   return {
     value: value,
     times: times,
     type: type,
+    target: target,
   };
 };
 MD.cs = function(HValue, HTimes, HType, VValue, VTimes, VType) {
@@ -146,3 +147,4 @@ MD.fc = function(callback) {
     callback: callback,
   };
 };
+
