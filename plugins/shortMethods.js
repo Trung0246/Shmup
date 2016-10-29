@@ -38,9 +38,10 @@ MD.fr = function(type, label, movement, position, direction, speed) {
     };
   }
 };
-MD.d = function(type, value, target) {
+MD.d = function(type, value, base, target) {
   return {
     value: value,
+    base: base,
     type: type,
     target: target,
   };
