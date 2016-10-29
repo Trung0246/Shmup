@@ -1,7 +1,7 @@
 (function(window) {
   "use strict";
   /*
-  Shmup.js v1.0.11
+  Shmup.js v1.0.12
   
   MIT License
 
@@ -263,21 +263,7 @@
               //Skip this bullet and head to next bullet because this bullet is deleted
               return;
             }
-            function checkFreeze() {
-              if (temp[name].freeze[actionLabel][fireLabel].done) {
-                if (temp[name].isFreezing[actionLabel] === true) {
-                  return false;
-                }
-                return true;
-              } else if (typeof temp[name].freeze[actionLabel][fireLabel].done === "undefined") {
-                if (temp[name].isFreezing[actionLabel] === false) {
-                  return true;
-                }
-              } else {
-                return false;
-              }
-            }
-            if (checkFreeze()) {
+            if (checkFreeze(actionLabel, fireLabel)) {
               //Check for done
               tempBullet = shot[flag[name].configs.shot[tempBullet.type].type].draw(tempBullet);
               //Check bullet count
@@ -304,11 +290,19 @@
               }
             }
             //Draw bullet
-            flag[name].configs.shot[tempBullet.type].draw(tempBullet);
+            if (checkFreeze(actionLabel, fireLabel)) {
+              flag[name].configs.shot[tempBullet.type].draw(tempBullet);
+            } else {
+              if (typeof flag[name].configs.shot[tempBullet.type].freeze !== "function") {
+                flag[name].configs.shot[tempBullet.type].draw(tempBullet);
+              } else {
+                flag[name].configs.shot[tempBullet.type].freeze(tempBullet);
+              }
+            }
             //Set bullet temp type for count
             var tempCountType = tempBullet.type;
             //Callback bullet
-            if (flag[name].configs.shot[tempBullet.type].callback && checkFreeze()) {
+            if (flag[name].configs.shot[tempBullet.type].callback && checkFreeze(actionLabel, fireLabel)) {
               var tempData = flag[name].configs.shot[tempBullet.type].callback(tempBullet.actionRef || actionLabel, actionLabel, (function() {
                 try {
                   return tempBullet.commands[tempBullet.commands.length - 1].actions;
@@ -337,6 +331,20 @@
             }
           }
         }
+      }
+    }
+    function checkFreeze(actionLabel, fireLabel) {
+      if (temp[name].freeze[actionLabel][fireLabel].done) {
+        if (temp[name].isFreezing[actionLabel] === true) {
+          return false;
+        }
+        return true;
+      } else if (typeof temp[name].freeze[actionLabel][fireLabel].done === "undefined") {
+        if (temp[name].isFreezing[actionLabel] === false) {
+          return true;
+        }
+      } else {
+        return false;
       }
     }
   };
@@ -951,12 +959,7 @@
           //Check for times data if larger than 0
           if (tempBullet.change.direction.times > 0) {
             //Check for type
-            if (tempBullet.change.direction.type === "plus") {
-              tempBullet.direction.value += tempBullet.change.direction.change;
-            } else if (tempBullet.change.direction.type === "multiply") {
-              tempBullet.direction.value *= tempBullet.change.direction.change;
-            }
-            //Minus times to 1
+            tempBullet.direction.value += tempBullet.change.direction.change;
             tempBullet.change.direction.times --;
           }
         }
@@ -966,12 +969,7 @@
           if (tempBullet.change.speed.horizontal) {
             if (tempBullet.change.speed.horizontal.times > 0) {
               //Check for type
-              if (tempBullet.change.speed.horizontal.type === "plus") {
-                tempBullet.speed.horizontal += tempBullet.change.speed.horizontal.change;
-              } else if (tempBullet.change.speed.horizontal.type === "multiply") {
-                tempBullet.speed.horizontal *= tempBullet.change.speed.horizontal.change;
-              }
-              //Minus times to 1
+              tempBullet.speed.horizontal += tempBullet.change.speed.horizontal.change;
               tempBullet.change.speed.horizontal.times --;
             }
           }
@@ -979,11 +977,7 @@
           if (tempBullet.change.speed.vertical) {
             if (tempBullet.change.speed.vertical.times > 0) {
               //Check for type
-              if (tempBullet.change.speed.vertical.type === "plus") {
-                tempBullet.speed.vertical += tempBullet.change.speed.vertical.change;
-              } else if (tempBullet.change.speed.vertical.type === "multiply") {
-                tempBullet.speed.vertical *= tempBullet.change.speed.vertical.change;
-              }
+              tempBullet.speed.vertical += tempBullet.change.speed.vertical.change;
               //Minus times to 1
               tempBullet.change.speed.vertical.times --;
             }
@@ -1029,7 +1023,6 @@
             tempBullet.position.end = actionCommands.position.end.slice();
             tempBullet.change.direction.times = actionCommands.position.times || 1;
             tempBullet.change.direction.value = angleAtoB(tempBullet.position.now, actionCommands.position.end);
-            tempBullet.change.direction.type = "plus";
             tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
           } else if (actionCommands.direction) {
             //Check for action commands direction
@@ -1045,19 +1038,30 @@
             //Check for type
             if (actionCommands.direction.type) {
               tempBullet.change.direction.type = actionCommands.direction.type;
-            } else if (!actionCommands.direction.velocity) {
-              tempBullet.change.direction.type = "plus";
             } else {
-              tempBullet.change.direction.type = "multiply";
+              tempBullet.change.direction.type = "absolute";
             }
             //Check for times
             tempBullet.change.direction.times = actionCommands.direction.times || 1;
             //Calculate change
-            if (tempBullet.change.direction.type === "plus") {
-              tempBullet.change.direction.change = tempBullet.change.direction.value / tempBullet.change.direction.times;//(tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
-            } else if (tempBullet.change.direction.type === "multiply") {
-              tempBullet.change.direction.change = tempBullet.change.direction.value;
-            }
+            switch (tempBullet.change.direction.type) {
+                case "aim": {
+                  tempBullet.change.direction.change = (angleAtoB(tempBullet.position.now, flag[name].configs.target[actionCommands.direction.target]()) + tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
+                }
+                break;
+                case "relative": {
+                  tempBullet.change.direction.change = tempBullet.change.direction.value / tempBullet.change.direction.times;
+                }
+                break;
+                case "sequence": {
+                  tempBullet.change.direction.change = (tempBullet.direction.value * tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
+                }
+                break;
+                case "absolute": {
+                  tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
+                }
+                break;
+              }
           }
           //Speed
           if (actionCommands.speed) {
@@ -1076,18 +1080,25 @@
               //Check for type
               if (actionCommands.speed.horizontal.type) {
                 tempBullet.change.speed.horizontal.type = actionCommands.speed.horizontal.type;
-              } else if (!actionCommands.speed.horizontal.velocity) {
-                tempBullet.change.speed.horizontal.type = "plus";
               } else {
-                tempBullet.change.speed.horizontal.type = "multiply";
+                tempBullet.change.speed.horizontal.type = "absolute";
               }
               //Check for times
               tempBullet.change.speed.horizontal.times = actionCommands.speed.horizontal.times || 1;
               //Calculate change
-              if (tempBullet.change.speed.horizontal.type === "plus") {
-                tempBullet.change.speed.horizontal.change = (tempBullet.change.speed.horizontal.value - tempBullet.speed.horizontal) / tempBullet.change.speed.horizontal.times;
-              } else if (tempBullet.change.speed.horizontal.type === "multiply") {
-                tempBullet.change.speed.horizontal.change = tempBullet.change.speed.horizontal.value;
+              switch (tempBullet.change.speed.horizontal.type) {
+                case "relative": {
+                  tempBullet.change.speed.horizontal.change = tempBullet.change.speed.horizontal.value / tempBullet.change.speed.horizontal.times;
+                }
+                break;
+                case "sequence": {
+                  tempBullet.change.speed.horizontal.change = (tempBullet.speed.horizontal * tempBullet.change.speed.horizontal.value - tempBullet.speed.horizontal) / tempBullet.change.speed.horizontal.times;
+                }
+                break;
+                case "absolute": {
+                  tempBullet.change.speed.horizontal.change = (tempBullet.change.speed.horizontal.value - tempBullet.speed.horizontal) / tempBullet.change.speed.horizontal.times;
+                }
+                break;
               }
             }
             //Vertical speed
@@ -1101,18 +1112,25 @@
               //Check for type
               if (actionCommands.speed.vertical.type) {
                 tempBullet.change.speed.vertical.type = actionCommands.speed.vertical.type;
-              } else if (!actionCommands.speed.vertical.velocity) {
-                tempBullet.change.speed.vertical.type = "plus";
               } else {
-                tempBullet.change.speed.vertical.type = "multiply";
+                tempBullet.change.speed.vertical.type = "absolute";
               }
               //Check for times
               tempBullet.change.speed.vertical.times = actionCommands.speed.vertical.times || 1;
               //Calculate change
-              if (tempBullet.change.speed.vertical.type === "plus") {
-                tempBullet.change.speed.vertical.change = (tempBullet.change.speed.vertical.value - tempBullet.speed.vertical) / tempBullet.change.speed.vertical.times;
-              } else if (tempBullet.change.speed.vertical.type === "multiply") {
-                tempBullet.change.speed.vertical.change = tempBullet.change.speed.vertical.value;
+              switch (tempBullet.change.speed.vertical.type) {
+                case "relative": {
+                  tempBullet.change.speed.vertical.change = tempBullet.change.speed.vertical.value / tempBullet.change.speed.vertical.times;
+                }
+                break;
+                case "sequence": {
+                  tempBullet.change.speed.vertical.change = (tempBullet.speed.vertical * tempBullet.change.speed.vertical.value - tempBullet.speed.vertical) / tempBullet.change.speed.vertical.times;
+                }
+                break;
+                case "absolute": {
+                  tempBullet.change.speed.vertical.change = (tempBullet.change.speed.vertical.value - tempBullet.speed.vertical) / tempBullet.change.speed.vertical.times;
+                }
+                break;
               }
             }
           }
