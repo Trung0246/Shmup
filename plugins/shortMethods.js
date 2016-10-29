@@ -1,5 +1,5 @@
 /*
-  shortMethods.js v0.01
+  shortMethods.js v0.0.2
   For Shmup.js 1.0.11 and newer
   https://github.com/Trung0246/Shmup/new/master/plugins
 */
