@@ -90,9 +90,4 @@ window.requestAnimFrame = (function(){
     window.setTimeout(callback, 1000 / 60);
   };
 })();
-
-setInterval(function() {
-  document.getElementById("fps").innerHTML = "FPS: " + fps;
-  fps = 0;
-}, 1000);
 // example code from mr doob : http://mrdoob.com/lab/javascript/requestanimationframe/
