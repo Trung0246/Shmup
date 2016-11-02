@@ -32,4 +32,6 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Add new type of direction *same* that fire multiple direction at same time based on angle (may not useful)
 * Add *count* bulletGroup (may not possible)
 * Compress *extend* function to one (may not possible)
+* Create vector, projectile class to faster code
+* Implement *Pool* object handler
 * Remove error handling
