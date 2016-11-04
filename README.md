@@ -27,7 +27,6 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Add plugins shape to fire like star, square, heart, ...
 * Add plugins for bounce angle and teleport to opposite like asteroid game
 * Add plugins for special handling like danmakufu ph3 ?
-
 * Add shotRef
 * Make func command to possible return methods
 * Make it possible to clone configs?
