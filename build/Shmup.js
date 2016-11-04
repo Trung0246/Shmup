@@ -1,7 +1,7 @@
 (function(window) {
   "use strict";
   /*
-  Shmup.js v1.0.12
+  Shmup.js v1.1
   
   MIT License
 
@@ -771,6 +771,10 @@
         label: actionCommands.label,
         position: {
           now: undefined,
+          /*old: {
+            value: undefined,
+            done: false,
+          },*/
         },
         wait: {},
         flag: randomString(),
@@ -808,6 +812,7 @@
         } else {
           tempBullet.position.now = flag[name].configs.position();
         }
+        //tempBullet.old = 
         if (actionCommands.position.end) {
           tempBullet.position.end = actionCommands.position.end;
           tempBullet.direction.value = angleAtoB(tempBullet.position.now, tempBullet.position.end);
@@ -942,6 +947,20 @@
             default: {
               tempBullet.speed.vertical = 1;
             }
+          }
+          //Process oval
+          if (typeof actionCommands.speed.oval === "number") {//actionCommands.speed.balance === true) {
+            var tempPos = [];
+            //Calculate next possible xy
+            tempPos[0] = tempBullet.position.now[0] + tempBullet.speed.horizontal * Math.cos(getAngle(tempBullet.direction.value)) * Math.cos(getAngle(actionCommands.speed.oval)) - tempBullet.speed.vertical * Math.sin(getAngle(tempBullet.direction.value)) * Math.sin(getAngle(actionCommands.speed.oval));
+            tempPos[1] = tempBullet.position.now[1] + tempBullet.speed.vertical * Math.sin(getAngle(tempBullet.direction.value)) * Math.cos(getAngle(actionCommands.speed.oval)) + tempBullet.speed.horizontal * Math.cos(getAngle(tempBullet.direction.value)) * Math.sin(getAngle(actionCommands.speed.oval));
+            //Check magnitude
+            var tempMag = Math.pythagorean(tempBullet.position.now, tempPos);
+            //Set angle
+            tempBullet.direction.value = angleAtoB(tempBullet.position.now, tempPos);
+            //Set speed
+            tempBullet.speed.horizontal = tempMag;
+            tempBullet.speed.vertical = tempMag;
           }
         } else {
           throw new Error("Invalid fire speed");
@@ -1430,7 +1449,7 @@
       return Math.normalizeRadian(angle);
     }
   };
-  Math.pythagoreanPos = function(a, b) {
+  Math.pythagorean = function(a, b) {
     return Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2));
   };
   Math.radToDeg = function(radian) {
