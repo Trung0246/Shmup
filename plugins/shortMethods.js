@@ -1,6 +1,6 @@
 /*
-  shortMethods.js v0.0.3
-  For Shmup.js 1.0.12 and newer
+  shortMethods.js v0.0.4
+  For Shmup.js 1.1
   https://github.com/Trung0246/Shmup/new/master/plugins
 */
 
@@ -50,7 +50,7 @@ MD.d = function(type, value, base, target) {
     target: target,
   };
 };
-MD.s = function(HType, HValue, VType, VValue) {
+MD.s = function(HType, HValue, VType, VValue, oval) {
   return {
     horizontal: {
       value: HValue,
@@ -60,6 +60,7 @@ MD.s = function(HType, HValue, VType, VValue) {
       value: VValue,
       type: VType,
     },
+    oval: oval,
   };
 };
 MD.p = function(now, end) {
