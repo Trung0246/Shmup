@@ -1,10 +1,10 @@
 /*
-  shortMethods.js v0.0.4
-  For Shmup.js 1.1
+  shortMethods.js v0.0.5
+  For Shmup.js 1.1.1
   https://github.com/Trung0246/Shmup/new/master/plugins
 */
 
-var MD = {}; //For plugins
+var MD = {};
 MD.rp = function(times, actions) {
   return {
     func: "repeat",
