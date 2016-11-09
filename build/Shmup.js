@@ -1440,7 +1440,7 @@
         }
       }
       function checkChange() {
-        if (isChange !== true) {
+        if (actionCommands.isChange !== true) {
           throw new Error("Label is not \"change\"");
         }
       }
