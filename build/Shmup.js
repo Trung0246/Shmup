@@ -122,7 +122,7 @@
       temp[name].fire.temp = {};
     }
     if (!temp[name].fire.ref) {
-      temp[name].fire.ref = {}
+      temp[name].fire.ref = {};
     }
     //if (!temp[name].fire.data[actionLabel]) {}
     temp[name].fire.data[actionLabel] = extend(flag[name].configs.fire);
@@ -448,7 +448,7 @@
   };
   commands.stop = function(actionLabelData) {
     if (typeof actionLabelData === "string") {
-      stopAction(actionLabelData)
+      stopAction(actionLabelData);
     } else if (actionLabelData.length > 0) {
       for (var indexActionLabel = 0; indexActionLabel < actionLabelData.length; indexActionLabel ++) {
         stopAction(actionLabelData[indexActionLabel]);
@@ -1616,7 +1616,7 @@
       return from;
     }
     if (from.constructor == Date || from.constructor == RegExp || from.constructor == Function || from.constructor == String || from.constructor == Number || from.constructor == Boolean) {
-      return new from.constructor(from)
+      return new from.constructor(from);
     }
     to = to || new from.constructor();
     for (var name in from) {
@@ -1632,7 +1632,7 @@
       return from;
     }
     if (from.constructor == Date || from.constructor == RegExp || from.constructor == Function || from.constructor == String || from.constructor == Number || from.constructor == Boolean) {
-      return new from.constructor(from)
+      return new from.constructor(from);
     }
     to = to || new from.constructor();
     for (var name in from) {
@@ -1650,7 +1650,7 @@
         return from;
       }
       if (from.constructor == Date || from.constructor == RegExp || from.constructor == Function || from.constructor == String || from.constructor == Number || from.constructor == Boolean) {
-        return new from.constructor(from)
+        return new from.constructor(from);
       }
       to = to || new from.constructor();
       for (var name in from) {
@@ -1698,7 +1698,7 @@
       return Math.radToDeg(-Math.atan2(a[0] - b[0], -(a[1] - b[1])));
     } else if (flag[name].configs.angleType === "radian") {
       return -Math.atan2(a[0] - b[0], -(a[1] - b[1]));
-    };
+    }
   }
   Math.normalizeRadian = function(radian) {
     radian = radian % (Math.PI * 2);
@@ -1726,7 +1726,7 @@
     } else if (flag[name].configs.angleType === "radian") {
       return Math.normalizeRadian(angle);
     }
-  };
+  }
   Math.pythagorean = function(a, b) {
     return Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2));
   };
