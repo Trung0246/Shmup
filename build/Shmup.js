@@ -1,7 +1,7 @@
 (function(window) {
   "use strict";
   /*
-  Shmup.js v1.1
+  Shmup.js v1.1.1
   
   MIT License
 
@@ -121,6 +121,9 @@
     if (!temp[name].fire.temp) {
       temp[name].fire.temp = {};
     }
+    if (!temp[name].fire.ref) {
+      temp[name].fire.ref = {}
+    }
     //if (!temp[name].fire.data[actionLabel]) {}
     temp[name].fire.data[actionLabel] = extend(flag[name].configs.fire);
     
@@ -186,19 +189,24 @@
   commands.fire = function(actionLabelData) {
     //Check for loop
     if (typeof actionLabelData !== "undefined") {
-      if (actionLabelData.length > 0) {
+      if (typeof actionLabelData === "string") {
+        actionLabelDataProcess(actionLabelData);
+      } else if (actionLabelData.length > 0) {
         for (var actionLabelIndex = 0; actionLabelIndex < actionLabelData.length; actionLabelIndex ++) {
-          if (temp[name].isFiring[actionLabelData[actionLabelIndex]] === false && temp[name].commands[actionLabelData[actionLabelIndex]].length === 1) {
-            temp[name].isFiring[actionLabelData[actionLabelIndex]] = true;
-          }
-          if (flag[name].actions.fire[actionLabelData[actionLabelIndex]] && temp[name].commands[actionLabelData[actionLabelIndex]].length === 1) {
-            methods.actions(actionLabelData[actionLabelIndex], actionLabelData[actionLabelIndex], temp[name].commands[actionLabelData[actionLabelIndex]][temp[name].commands[actionLabelData[actionLabelIndex]].length - 1].actions, temp[name].commands[actionLabelData[actionLabelIndex]], undefined, undefined);
-          } else {
-            throw new Error("Undefined actions of " + actionLabelData[actionLabelIndex] + " or is firing");
-          }
+          actionLabelDataProcess(actionLabelData[actionLabelIndex]);
         }
       } else {
         throw new Error("Undefined label list");
+      }
+    }
+    function actionLabelDataProcess(actionLabel) {
+      if (temp[name].isFiring[actionLabel] === false && temp[name].commands[actionLabel].length === 1) {
+        temp[name].isFiring[actionLabel] = true;
+      }
+      if (flag[name].actions.fire[actionLabel] && temp[name].commands[actionLabel].length === 1) {
+        methods.actions(actionLabel, actionLabel, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel], undefined, undefined);
+      } else {
+        throw new Error("Undefined actions of " + actionLabel + " or is firing");
       }
     }
   };
@@ -303,6 +311,8 @@
             var tempCountType = tempBullet.type;
             //Callback bullet
             if (flag[name].configs.shot[tempBullet.type].callback && checkFreeze(actionLabel, fireLabel)) {
+              tempBullet.position.now = positionData(tempBullet.position.now, true);
+              tempBullet.position.end = positionData(tempBullet.position.end, true);
               var tempData = flag[name].configs.shot[tempBullet.type].callback(tempBullet.actionRef || actionLabel, actionLabel, (function() {
                 try {
                   return tempBullet.commands[tempBullet.commands.length - 1].actions;
@@ -310,6 +320,8 @@
                   return undefined;
                 }
               })(), tempBullet.commands, undefined, tempBullet);
+              tempBullet.position.now = positionData(tempBullet.position.now);
+              tempBullet.position.end = positionData(tempBullet.position.end);
               //Prevent object no key bug
               if (!tempData) {
                 tempData = {};
@@ -598,6 +610,27 @@
   methods.change = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
     shot[flag[name].configs.shot[tempBullet.type].type].change(actionLabel, mainActionLabel, actionData, tempCommands, extendRun(actionCommands), tempBullet);
   };
+  methods.normalize = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
+    var tempActionCommands = extendRun(actionCommands);
+    shot[flag[name].configs.shot[(function() {
+      //Check for mainAction
+      if (actionLabel === mainActionLabel) {
+        if (tempActionCommands.label) {
+          return temp[name].fire.data[actionLabel][tempActionCommands.label].type;
+        } else {
+          throw new Error("Label must be defined in normalize main action");
+        }
+      } else if (actionLabel !== mainActionLabel && tempBullet) {
+        if (tempActionCommands.label) {
+          return temp[name].fire.data[actionLabel][tempActionCommands.label].type;
+        } else {
+          return tempBullet.type;
+        }
+      } else {
+        throw new Error("Label must be defined in normalize commands");
+      }
+    })()].type].normalize(actionLabel, mainActionLabel, actionData, tempCommands, tempActionCommands, tempBullet);
+  };
   methods.freeze = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
     var tempActionCommands = extendRun(actionCommands);
     //Check for if main action
@@ -620,7 +653,11 @@
     var tempActionCommands = extendRun(actionCommands);
     shot[flag[name].configs.shot[(function() {
       if (actionLabel === mainActionLabel) {
-        return temp[name].fire.data[actionLabel][tempActionCommands.label].type;
+        if (tempActionCommands.label) {
+          return temp[name].fire.data[actionLabel][tempActionCommands.label].type;
+        } else {
+          throw new Error("Label must be defined in reset main action");
+        }
       } else if (actionLabel !== mainActionLabel && tempBullet) {
         if (tempActionCommands.label) {
           return temp[name].fire.data[actionLabel][tempActionCommands.label].type;
@@ -633,11 +670,19 @@
     })()].type].reset(actionLabel, mainActionLabel, actionData, tempCommands, tempActionCommands, tempBullet);
   };
   methods.func = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
+    if (actionLabel !== mainActionLabel) {
+      tempBullet.position.now = positionData(tempBullet.position.now, true);
+      tempBullet.position.end = positionData(tempBullet.position.end, true);
+    }
     actionCommands.callback(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet);
+    if (actionLabel !== mainActionLabel) {
+      tempBullet.position.now = positionData(tempBullet.position.now);
+      tempBullet.position.end = positionData(tempBullet.position.end);
+    }
     return;
   };
   //------------- END METHODS ZONE ------------
-  //------------ --- SHOT ZONE ----------------
+  //---------------- SHOT ZONE ----------------
   shot.bullet = {
     fire: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBulletInput) {
       //Check for fireRef
@@ -796,6 +841,17 @@
           label: actionLabel,
         }];
       }
+      //Check for position now and end
+      if (actionCommands.position.now) {
+        tempBullet.position.now = positionData(actionCommands.position.now);//actionCommands.position.now.slice();
+        tempBullet.position.type = "custom";
+      } else if (tempBulletInput && actionCommands.position.type !== "gun") {
+        tempBullet.position.now = positionData(tempBulletInput.position.now);//tempBulletInput.position.now.slice
+        tempBullet.position.type = "bullet";
+      } else {
+        tempBullet.position.now = positionData(flag[name].configs.position());//flag[name].configs.position();
+        tempBullet.position.type = "gun";
+      }
       //Check for movement
       if (actionCommands.movement) {
         tempBullet.movement = actionCommands.movement;
@@ -803,14 +859,6 @@
         //Check for position
         if (!actionCommands.position) {
           actionCommands.position = {};
-        }
-        //Check for position now and end
-        if (actionCommands.position.now) {
-          tempBullet.position.now = actionCommands.position.now.slice();
-        } else if (tempBulletInput) {
-          tempBullet.position.now = tempBulletInput.position.now.slice();
-        } else {
-          tempBullet.position.now = flag[name].configs.position();
         }
         //tempBullet.old = 
         if (actionCommands.position.end) {
@@ -846,7 +894,7 @@
               tempBullet.direction.value = temp[name].fire.temp[actionLabel][actionCommands.label].direction.value + (function() {
                 //Check for target
                 if (actionCommands.direction.target) {
-                  return angleAtoB(tempBullet.position.now, flag[name].configs.target[actionCommands.direction.target]())
+                  return angleAtoB(tempBullet.position.now, flag[name].configs.target[actionCommands.direction.target]());
                 } else {
                   return 0;
                 }
@@ -1005,7 +1053,7 @@
       }
       //Check movement data
       if (typeof tempBullet.movement === "function") {
-        tempBullet.position.now = tempBullet.movement();
+        tempBullet.position.now = tempBullet.movement(positionData(tempBullet.position.now, true));
       } else {
         //Main x movement
         tempBullet.position.now[0] = Math.sin(getAngle(tempBullet.direction.value)) * tempBullet.speed.horizontal + tempBullet.position.now[0];
@@ -1020,6 +1068,14 @@
         if (!tempBullet.change) {
           tempBullet.change = {};
         }
+        //Check change label
+        if (!actionCommands.label) {
+          actionCommands.label = randomString();
+        }
+        //Current position
+        if (actionCommands.position.now) {
+          tempBullet.position.now = positionData(actionCommands.position.now);//actionCommands.position.now.slice();
+        }
         //Check for object data
         if (actionCommands.movement) {
           tempBullet.movement = actionCommands.movement;
@@ -1029,8 +1085,32 @@
             actionCommands.position = {};
           }
           //Current position
-          if (actionCommands.position.now) {
-            tempBullet.position.now = actionCommands.position.now.slice();
+          if (!actionCommands.position.now) {
+            tempBullet.position.now = positionData(tempBullet.position.now);
+          }
+          if (!temp[name].fire.ref[actionCommands.label]) {
+            temp[name].fire.ref[actionCommands.label] = {
+              direction: {
+                value: undefined,
+                root: undefined,
+                type: undefined,
+                base: undefined,
+              },
+              speed: {
+                horizontal: {
+                  value: undefined,
+                  root: undefined,
+                  type: undefined,
+                  base: undefined,
+                },
+                vertical: {
+                  value: undefined,
+                  root: undefined,
+                  type: undefined,
+                  base: undefined,
+                },
+              },
+            };
           }
           //End position
           if (actionCommands.position.end) {
@@ -1039,9 +1119,9 @@
               tempBullet.change.direction = {};
             }
             //Check for change data
-            tempBullet.position.end = actionCommands.position.end.slice();
+            tempBullet.position.end = positionData(actionCommands.position.end);//actionCommands.position.end.slice();
             tempBullet.change.direction.times = actionCommands.position.times || 1;
-            tempBullet.change.direction.value = angleAtoB(tempBullet.position.now, actionCommands.position.end);
+            tempBullet.change.direction.value = angleAtoB(tempBullet.position.now, tempBullet.position.end);
             tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
           } else if (actionCommands.direction) {
             //Check for action commands direction
@@ -1064,23 +1144,58 @@
             tempBullet.change.direction.times = actionCommands.direction.times || 1;
             //Calculate change
             switch (tempBullet.change.direction.type) {
-                case "aim": {
-                  tempBullet.change.direction.change = (angleAtoB(tempBullet.position.now, flag[name].configs.target[actionCommands.direction.target]()) + tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
-                }
-                break;
-                case "relative": {
-                  tempBullet.change.direction.change = tempBullet.change.direction.value / tempBullet.change.direction.times;
-                }
-                break;
-                case "sequence": {
-                  tempBullet.change.direction.change = (tempBullet.direction.value * tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
-                }
-                break;
-                case "absolute": {
-                  tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
-                }
-                break;
+              case "aim": {
+                tempBullet.change.direction.change = (angleAtoB(tempBullet.position.now, flag[name].configs.target[actionCommands.direction.target]()) + tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
               }
+              break;
+              case "relative": {
+                tempBullet.change.direction.change = tempBullet.change.direction.value / tempBullet.change.direction.times;
+              }
+              break;
+              case "sequenceAbsolute":
+              case "sequenceRelative": {
+                var tempAngle = (function() {
+                  if (actionCommands.direction.target) {
+                    return angleAtoB(tempBullet.position.now, flag[name].configs.target[actionCommands.direction.target]());
+                  } else {
+                    return 0;
+                  }
+                })();
+                //Check for base
+                if (typeof temp[name].fire.ref[actionCommands.label].direction.value !== "number") {
+                  //Check for action base
+                  if (typeof actionCommands.direction.base === "number") {
+                    temp[name].fire.ref[actionCommands.label].direction.base = actionCommands.direction.base;
+                  } else {
+                    temp[name].fire.ref[actionCommands.label].direction.base = 0;
+                  }
+                  temp[name].fire.ref[actionCommands.label].direction.value = temp[name].fire.ref[actionCommands.label].direction.base;
+                } else if (typeof temp[name].fire.ref[actionCommands.label].direction.value === "number") {
+                  temp[name].fire.ref[actionCommands.label].direction.value += tempBullet.change.direction.value;
+                  temp[name].fire.ref[actionCommands.label].direction.root = tempBullet.change.direction.value;
+                }
+                switch (tempBullet.change.direction.type) {
+                  case "sequenceAbsolute": {
+                    tempBullet.change.direction.change = (temp[name].fire.ref[actionCommands.label].direction.value + tempAngle - tempBullet.direction.value) / tempBullet.change.direction.times;
+                  }
+                  break;
+                  case "sequenceRelative": {
+                    tempBullet.change.direction.change = (temp[name].fire.ref[actionCommands.label].direction.value + tempAngle) / tempBullet.change.direction.times;
+                  }
+                  break;
+                }
+                temp[name].fire.ref[actionCommands.label].direction.type = "sequence";
+              }
+              break;
+              case "absolute": {
+                tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
+              }
+              break;
+              case "multiply": {
+                tempBullet.change.direction.change = (tempBullet.direction.value * tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
+              }
+              break;
+            }
           }
           //Speed
           if (actionCommands.speed) {
@@ -1110,12 +1225,41 @@
                   tempBullet.change.speed.horizontal.change = tempBullet.change.speed.horizontal.value / tempBullet.change.speed.horizontal.times;
                 }
                 break;
-                case "sequence": {
-                  tempBullet.change.speed.horizontal.change = (tempBullet.speed.horizontal * tempBullet.change.speed.horizontal.value - tempBullet.speed.horizontal) / tempBullet.change.speed.horizontal.times;
+                case "sequence":
+                case "sequenceAbsolute":
+                case "sequenceRelative": {
+                  if (typeof temp[name].fire.ref[actionCommands.label].speed.horizontal.value !== "number") {
+                    //Check for action base
+                    if (typeof actionCommands.direction.base === "number") {
+                      temp[name].fire.ref[actionCommands.label].speed.horizontal.base = actionCommands.speed.horizontal.base;
+                    } else {
+                      temp[name].fire.ref[actionCommands.label].speed.horizontal.base = 0;
+                    }
+                    temp[name].fire.ref[actionCommands.label].speed.horizontal.value = temp[name].fire.ref[actionCommands.label].speed.horizontal.base;
+                  } else if (typeof temp[name].fire.ref[actionCommands.label].speed.horizontal.value === "number") {
+                    temp[name].fire.ref[actionCommands.label].speed.horizontal.value += tempBullet.change.speed.horizontal.value;
+                    temp[name].fire.ref[actionCommands.label].speed.horizontal.root = tempBullet.change.speed.horizontal.value;
+                  }
+                  switch (tempBullet.change.speed.horizontal.type) {
+                    case "sequence":
+                    case "sequenceAbsolute": {
+                      tempBullet.change.speed.horizontal.change = (temp[name].fire.ref[actionCommands.label].speed.horizontal.value - tempBullet.speed.horizontal.value) / tempBullet.change.speed.horizontal.times;
+                    }
+                    break;
+                    case "sequenceRelative": {
+                      tempBullet.change.speed.horizontal.change = temp[name].fire.ref[actionCommands.label].speed.horizontal.value / tempBullet.change.speed.horizontal.times;
+                    }
+                    break;
+                  }
+                  temp[name].fire.ref[actionCommands.label].speed.horizontal.type = "sequence";
                 }
                 break;
                 case "absolute": {
                   tempBullet.change.speed.horizontal.change = (tempBullet.change.speed.horizontal.value - tempBullet.speed.horizontal) / tempBullet.change.speed.horizontal.times;
+                }
+                break;
+                case "multiply": {
+                  tempBullet.change.speed.horizontal.change = (tempBullet.speed.horizontal * tempBullet.change.speed.horizontal.value - tempBullet.speed.horizontal) / tempBullet.change.speed.horizontal.times;
                 }
                 break;
               }
@@ -1142,12 +1286,41 @@
                   tempBullet.change.speed.vertical.change = tempBullet.change.speed.vertical.value / tempBullet.change.speed.vertical.times;
                 }
                 break;
-                case "sequence": {
-                  tempBullet.change.speed.vertical.change = (tempBullet.speed.vertical * tempBullet.change.speed.vertical.value - tempBullet.speed.vertical) / tempBullet.change.speed.vertical.times;
+                case "sequence":
+                case "sequenceAbsolute":
+                case "sequenceRelative": {
+                  if (typeof temp[name].fire.ref[actionCommands.label].speed.vertical.value !== "number") {
+                    //Check for action base
+                    if (typeof actionCommands.direction.base === "number") {
+                      temp[name].fire.ref[actionCommands.label].speed.vertical.base = actionCommands.speed.vertical.base;
+                    } else {
+                      temp[name].fire.ref[actionCommands.label].speed.vertical.base = 0;
+                    }
+                    temp[name].fire.ref[actionCommands.label].speed.vertical.value = temp[name].fire.ref[actionCommands.label].speed.vertical.base;
+                  } else if (typeof temp[name].fire.ref[actionCommands.label].speed.vertical.value === "number") {
+                    temp[name].fire.ref[actionCommands.label].speed.vertical.value += tempBullet.change.speed.vertical.value;
+                    temp[name].fire.ref[actionCommands.label].speed.vertical.root = tempBullet.change.speed.vertical.value;
+                  }
+                  switch (tempBullet.change.speed.vertical.type) {
+                    case "sequence":
+                    case "sequenceAbsolute": {
+                      tempBullet.change.speed.vertical.change = (temp[name].fire.ref[actionCommands.label].speed.vertical.value - tempBullet.speed.vertical.value) / tempBullet.change.speed.vertical.times;
+                    }
+                    break;
+                    case "sequenceRelative": {
+                      tempBullet.change.speed.vertical.change = temp[name].fire.ref[actionCommands.label].speed.vertical.value / tempBullet.change.speed.vertical.times;
+                    }
+                    break;
+                  }
+                  temp[name].fire.ref[actionCommands.label].speed.vertical.type = "sequence";
                 }
                 break;
                 case "absolute": {
                   tempBullet.change.speed.vertical.change = (tempBullet.change.speed.vertical.value - tempBullet.speed.vertical) / tempBullet.change.speed.vertical.times;
+                }
+                break;
+                case "multiply": {
+                  tempBullet.change.speed.vertical.change = (tempBullet.speed.vertical * tempBullet.change.speed.vertical.value - tempBullet.speed.vertical) / tempBullet.change.speed.vertical.times;
                 }
                 break;
               }
@@ -1158,34 +1331,118 @@
         throw new Error("Change must be called in not fire actions");
       }
     },
+    normalize: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
+      if (flag[name].actions.ref[actionLabel]) {
+        switch (actionCommands.type) {
+          case "sequence": {
+            temp[name].fire.temp[actionLabel][checkLabel()].direction.value = normalizeAngle(temp[name].fire.temp[actionLabel][checkLabel()].direction.value);
+          }
+          break;
+          case "sequenceChange": {
+            if (actionCommands.isChange !== true) {
+              throw new Error("Label is not \"change\"");
+            }
+            temp[name].fire.ref[checkLabel(true)].direction.value = normalizeAngle(temp[name].fire.ref[checkLabel(true)].direction.value);
+          }
+          break;
+          default: {
+            //bullet process
+            if (mainActionLabel !== actionLabel) {
+              tempBullet.direction.value = normalizeAngle(tempBullet.direction.value);
+            } else {
+              throw new Error("Unknown normalize type");
+            }
+          }
+        }
+      } else {
+        throw new Error("Normalize must be called in not fire actions");
+      }
+      function checkLabel(isBullet) {
+        if (actionLabel === mainActionLabel) {
+          if (actionCommands.label) {
+            return actionCommands.label;
+          } else {
+            throw new Error("Label must be defined in normalize main action");
+          }
+        } else if (actionLabel !== mainActionLabel && tempBullet) {
+          if (actionCommands.label) {
+            return actionCommands.label;
+          } else if (!isBullet) {
+            return tempBullet.label;
+          }
+        } else {
+          throw new Error("Label must be defined in normalize commands");
+        }
+      }
+    },
     freeze: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
       
     },
     reset: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
       //Set temp data
       var tempData = temp[name].fire.temp[actionLabel][actionCommands.label];
+      var tempDataTwo = temp[name].fire.ref[actionCommands.label];
       //Check if sequence
-      if (actionCommands.type === "direction") {
-        //Check for sequence or direction
-        if (tempData.direction.type === "sequence") {
-          tempData.direction.value = (actionCommands.value || tempData.direction.base) - tempData.direction.root;
-        } else {
-          throw new Error("direction type is not sequence or aim");
+      switch (actionCommands.type) {
+        case "direction": {
+          if (tempData.direction.type === "sequence") {
+            tempData.direction.value = (actionCommands.value || tempData.direction.base) - tempData.direction.root;
+          } else {
+            throw new Error("sequence type is not sequence");
+          }
         }
-      } else if (actionCommands.type === "horizontal") {
-        if (tempData.speed.horizontal === "sequence") {
-          tempData.speed.horizontal.value = (actionCommands.value || tempData.speed.horizontal.base) - tempData.speed.horizontal.root;
-        } else {
-          throw new Error("speed horizontal type is not sequence");
+        break;
+        case "directionChange": {
+          checkChange();
+          if (tempDataTwo.direction.type === "sequence") {
+            tempDataTwo.direction.value = (actionCommands.value || tempDataTwo.direction.base) - tempDataTwo.direction.root;
+          } else {
+            throw new Error("sequenceChange type is not change sequence");
+          }
         }
-      } else if (actionCommands.type === "vertical") {
-        if (tempData.speed.vertical === "sequence") {
-          tempData.speed.vertical.value = (actionCommands.value || tempData.speed.vertical.base) - tempData.speed.vertical.root;
-        } else {
-          throw new Error("speed vertical type is not sequence");
+        break;
+        case "horizontal": {
+          if (tempData.speed.horizontal.type === "sequence") {
+            tempData.speed.horizontal.value = (actionCommands.value || tempData.speed.horizontal.base) - tempData.speed.horizontal.root;
+          } else {
+            throw new Error("speed horizontal type is not sequence");
+          }
         }
-      } else {
-        throw new Error("Undefined type");
+        break;
+        case "vertical": {
+          if (tempData.speed.vertical.type === "sequence") {
+            tempData.speed.vertical.value = (actionCommands.value || tempData.speed.vertical.base) - tempData.speed.vertical.root;
+          } else {
+            throw new Error("speed vertical type is not sequence");
+          }
+        }
+        break;
+        case "horizontalChange": {
+          checkChange();
+          if (tempDataTwo.speed.horizontal.type === "sequence") {
+            tempDataTwo.speed.horizontal.value = (actionCommands.value || tempDataTwo.speed.horizontal.base) - tempDataTwo.speed.horizontal.root;
+          } else {
+            throw new Error("speed horizontalChange type is not sequence");
+          }
+        }
+        break;
+        case "verticalChange": {
+          checkChange();
+          if (tempDataTwo.speed.vertical.type === "sequence") {
+            tempDataTwo.speed.vertical.value = (actionCommands.value || tempDataTwo.speed.vertical.base) - tempDataTwo.speed.vertical.root;
+          } else {
+            throw new Error("speed verticalChange type is not sequence");
+          }
+        }
+        break;
+        default: {
+          throw new Error("Undefined reset type");
+        }
+      }
+      function checkChange() {
+        if (isChange !== true) {
+          throw new Error("Label is not \"change\"");
+        }
       }
     },
     vanish: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
@@ -1289,6 +1546,27 @@
   //-------------- END SHOT ZONE --------------
   //------------ OTHER STUFF ZONE -------------
   //Helper function
+  function positionData(position, isSet) {
+    if (!flag[name].configs.positionType) {
+      flag[name].configs.positionType = "array";
+    }
+    if (isSet) {
+      if (run(flag[name].configs.positionType, true) === "object") {
+        return {
+          x: position[0],
+          y: position[1],
+        };
+      } else {
+        return position;
+      }
+    } else {
+      if (run(flag[name].configs.positionType, true) === "object") {
+        return [position.x, position.y];
+      } else {
+        return position;
+      }
+    }
+  }
   function resetAction(actionLabel) {
     temp[name].isFiring[actionLabel] = false;
     temp[name].fire.temp[actionLabel] = {};
