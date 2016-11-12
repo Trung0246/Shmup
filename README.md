@@ -15,6 +15,8 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
 [**WIKI**](https://github.com/Trung0246/Shmup/wiki)
 
+Hey there Gensokyo Radio !!! Just leave this message here for fun lol, what do you guys think about web version of Touhou? :), may I have to learn to draw and music making for this, and maybe squash some bugs and increase my programming skill ;) 
+
 ## Feature:
 * Nothing, this library is currently being write.
 
