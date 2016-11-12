@@ -1,7 +1,7 @@
 (function(window) {
   "use strict";
   /*
-  Shmup.js v1.1.1
+  Shmup.js v1.1.2
   
   MIT License
 
@@ -121,8 +121,8 @@
     if (!temp[name].fire.temp) {
       temp[name].fire.temp = {};
     }
-    if (!temp[name].fire.ref) {
-      temp[name].fire.ref = {};
+    if (!temp[name].change) {
+      temp[name].change = {};
     }
     //if (!temp[name].fire.data[actionLabel]) {}
     temp[name].fire.data[actionLabel] = extend(flag[name].configs.fire);
@@ -241,22 +241,24 @@
             }
             methods.actions(actionLabel, actionLabel, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel], undefined, undefined);
           }
-        } else if (temp[name].wait[actionLabel].times() === true) {
-          methods.actions(actionLabel, actionLabel, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel], undefined, undefined);
+        } else if (typeof temp[name].wait[actionLabel].times === "function") {
+          if (temp[name].wait[actionLabel].times() === true) {
+            methods.actions(actionLabel, actionLabel, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel], undefined, undefined);
+          }
         }
       }
       //Freeze processing
-      for (var fireLabel in temp[name].bullets[actionLabel]) {
-        if (temp[name].freeze[actionLabel][fireLabel].type !== "manual") {
-          if (temp[name].freeze[actionLabel][fireLabel].times > 0) {
-            temp[name].freeze[actionLabel][fireLabel].times --;
+      for (var fireLabelData in temp[name].bullets[actionLabel]) {
+        if (temp[name].freeze[actionLabel][fireLabelData].type !== "manual") {
+          if (temp[name].freeze[actionLabel][fireLabelData].times > 0) {
+            temp[name].freeze[actionLabel][fireLabelData].times --;
           }
-          if (temp[name].freeze[actionLabel][fireLabel].times <= 0/* || temp[name].freeze[actionLabel][fireLabel].times === undefined*/) {
-            temp[name].freeze[actionLabel][fireLabel].times = undefined;
-            temp[name].freeze[actionLabel][fireLabel].done = true;
+          if (temp[name].freeze[actionLabel][fireLabelData].times <= 0/* || temp[name].freeze[actionLabel][fireLabelData].times === undefined*/) {
+            temp[name].freeze[actionLabel][fireLabelData].times = undefined;
+            temp[name].freeze[actionLabel][fireLabelData].done = true;
           }
         } else {
-          temp[name].freeze[actionLabel][fireLabel].done = temp[name].freeze[actionLabel][fireLabel].times();
+          temp[name].freeze[actionLabel][fireLabelData].done = temp[name].freeze[actionLabel][fireLabelData].times();
         }
       }
       //Draw bullet
@@ -291,9 +293,11 @@
                       methods.actions(tempBullet.actionRef, actionLabel, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, undefined, tempBullet);
                     }
                   }
-                } else if (tempBullet.wait.times() === true) {
-                  tempBullet.wait.times = undefined;
+                } else if (typeof tempBullet.wait.times === "function") {
+                  if (tempBullet.wait.times() === true) {
+                    tempBullet.wait.times = undefined;
                   methods.actions(tempBullet.actionRef, actionLabel, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, undefined, tempBullet);
+                  }
                 }
               }
             }
@@ -371,7 +375,7 @@
       throw new Error("No action to freeze");
     }
   };
-  commands.continue = function(actionLabelData) {
+  commands.move = function(actionLabelData) {
     if (typeof actionLabelData === "string") {
       temp[name].isFreezing[actionLabelData] = false;
     } else if (actionLabelData.length > 0) {
@@ -406,7 +410,7 @@
             return;
           }
           var tempCountType = tempBullet.type;
-          methods.vanish(actionLabel, actionLabel, undefined, undefined, {
+          methods.vanish(tempBullet.location[tempBullet.location.length - 1], tempBullet.location[0], undefined, undefined, {
             type: "all",
             label: tempBullet.label,
           }, tempBullet);
@@ -612,24 +616,44 @@
   };
   methods.normalize = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
     var tempActionCommands = extendRun(actionCommands);
-    shot[flag[name].configs.shot[(function() {
-      //Check for mainAction
+    switch (tempActionCommands.type) {
+      case "sequence": {
+        temp[name].fire.temp[actionLabel][checkLabel()].direction.value = normalizeAngle(temp[name].fire.temp[actionLabel][checkLabel()].direction.value);
+      }
+      break;
+      case "sequenceChange": {
+        if (tempActionCommands.isChange !== true) {
+          throw new Error("Label is not \"change\"");
+        }
+        temp[name].change[checkLabel(true)].direction.value = normalizeAngle(temp[name].change[checkLabel(true)].direction.value);
+      }
+      break;
+      default: {
+        //bullet process
+        if (mainActionLabel !== actionLabel) {
+          tempBullet.direction.value = normalizeAngle(tempBullet.direction.value);
+        } else {
+          throw new Error("Unknown normalize type");
+        }
+      }
+    }
+    function checkLabel(isBullet) {
       if (actionLabel === mainActionLabel) {
         if (tempActionCommands.label) {
-          return temp[name].fire.data[actionLabel][tempActionCommands.label].type;
+          return tempActionCommands.label;
         } else {
           throw new Error("Label must be defined in normalize main action");
         }
       } else if (actionLabel !== mainActionLabel && tempBullet) {
         if (tempActionCommands.label) {
-          return temp[name].fire.data[actionLabel][tempActionCommands.label].type;
-        } else {
-          return tempBullet.type;
+          return tempActionCommands.label;
+        } else if (!isBullet) {
+          return tempBullet.label;
         }
       } else {
         throw new Error("Label must be defined in normalize commands");
       }
-    })()].type].normalize(actionLabel, mainActionLabel, actionData, tempCommands, tempActionCommands, tempBullet);
+    }
   };
   methods.freeze = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
     var tempActionCommands = extendRun(actionCommands);
@@ -762,6 +786,9 @@
               type: "absolute",
             };
           }
+          if (!actionCommands.speed.oval) {
+            actionCommands.speed.oval = tempData.speed.oval;
+          }
         } else if (!actionCommands.movement) {
           actionCommands.speed = {
             horizontal: {
@@ -842,14 +869,18 @@
         }];
       }
       //Check for position now and end
+      if (!actionCommands.position) {
+        actionCommands.position = {};
+      }
       if (actionCommands.position.now) {
-        tempBullet.position.now = positionData(actionCommands.position.now);//actionCommands.position.now.slice();
+        tempBullet.position.now = positionData(actionCommands.position.now.slice());//actionCommands.position.now.slice();
         tempBullet.position.type = "custom";
       } else if (tempBulletInput && actionCommands.position.type !== "gun") {
-        tempBullet.position.now = positionData(tempBulletInput.position.now);//tempBulletInput.position.now.slice
+        tempBullet.position.now = positionData(tempBulletInput.position.now.slice());//tempBulletInput.position.now.slice();//
+        //console.log(tempBullet.position.now);
         tempBullet.position.type = "bullet";
       } else {
-        tempBullet.position.now = positionData(flag[name].configs.position());//flag[name].configs.position();
+        tempBullet.position.now = positionData(flag[name].configs.position().slice());//flag[name].configs.position();
         tempBullet.position.type = "gun";
       }
       //Check for movement
@@ -1014,6 +1045,12 @@
           throw new Error("Invalid fire speed");
         }
       }
+      if (tempBulletInput) {
+        tempBullet.location = tempBulletInput.location.slice();
+        tempBullet.location.push(actionLabel);
+      } else {
+        tempBullet.location = [actionLabel];
+      }
       temp[name].bullets[mainActionLabel][actionCommands.label].push(tempBullet);
       tempBullet = temp[name].bullets[mainActionLabel][actionCommands.label][temp[name].bullets[mainActionLabel][actionCommands.label].length - 1];
       return tempBullet;
@@ -1072,9 +1109,13 @@
         if (!actionCommands.label) {
           actionCommands.label = randomString();
         }
+        //Prevent no object error
+        if (!actionCommands.position) {
+          actionCommands.position = {};
+        }
         //Current position
         if (actionCommands.position.now) {
-          tempBullet.position.now = positionData(actionCommands.position.now);//actionCommands.position.now.slice();
+          tempBullet.position.now = positionData(actionCommands.position.now.slice());//actionCommands.position.now.slice();
         }
         //Check for object data
         if (actionCommands.movement) {
@@ -1088,8 +1129,8 @@
           if (!actionCommands.position.now) {
             tempBullet.position.now = positionData(tempBullet.position.now);
           }
-          if (!temp[name].fire.ref[actionCommands.label]) {
-            temp[name].fire.ref[actionCommands.label] = {
+          if (!temp[name].change[actionCommands.label]) {
+            temp[name].change[actionCommands.label] = {
               direction: {
                 value: undefined,
                 root: undefined,
@@ -1119,7 +1160,7 @@
               tempBullet.change.direction = {};
             }
             //Check for change data
-            tempBullet.position.end = positionData(actionCommands.position.end);//actionCommands.position.end.slice();
+            tempBullet.position.end = positionData(actionCommands.position.end.slice());//actionCommands.position.end.slice();
             tempBullet.change.direction.times = actionCommands.position.times || 1;
             tempBullet.change.direction.value = angleAtoB(tempBullet.position.now, tempBullet.position.end);
             tempBullet.change.direction.change = (tempBullet.change.direction.value - tempBullet.direction.value) / tempBullet.change.direction.times;
@@ -1162,29 +1203,29 @@
                   }
                 })();
                 //Check for base
-                if (typeof temp[name].fire.ref[actionCommands.label].direction.value !== "number") {
+                if (typeof temp[name].change[actionCommands.label].direction.value !== "number") {
                   //Check for action base
                   if (typeof actionCommands.direction.base === "number") {
-                    temp[name].fire.ref[actionCommands.label].direction.base = actionCommands.direction.base;
+                    temp[name].change[actionCommands.label].direction.base = actionCommands.direction.base;
                   } else {
-                    temp[name].fire.ref[actionCommands.label].direction.base = 0;
+                    temp[name].change[actionCommands.label].direction.base = 0;
                   }
-                  temp[name].fire.ref[actionCommands.label].direction.value = temp[name].fire.ref[actionCommands.label].direction.base;
-                } else if (typeof temp[name].fire.ref[actionCommands.label].direction.value === "number") {
-                  temp[name].fire.ref[actionCommands.label].direction.value += tempBullet.change.direction.value;
-                  temp[name].fire.ref[actionCommands.label].direction.root = tempBullet.change.direction.value;
+                  temp[name].change[actionCommands.label].direction.value = temp[name].change[actionCommands.label].direction.base;
+                } else if (typeof temp[name].change[actionCommands.label].direction.value === "number") {
+                  temp[name].change[actionCommands.label].direction.value += tempBullet.change.direction.value;
+                  temp[name].change[actionCommands.label].direction.root = tempBullet.change.direction.value;
                 }
                 switch (tempBullet.change.direction.type) {
                   case "sequenceAbsolute": {
-                    tempBullet.change.direction.change = (temp[name].fire.ref[actionCommands.label].direction.value + tempAngle - tempBullet.direction.value) / tempBullet.change.direction.times;
+                    tempBullet.change.direction.change = (temp[name].change[actionCommands.label].direction.value + tempAngle - tempBullet.direction.value) / tempBullet.change.direction.times;
                   }
                   break;
                   case "sequenceRelative": {
-                    tempBullet.change.direction.change = (temp[name].fire.ref[actionCommands.label].direction.value + tempAngle) / tempBullet.change.direction.times;
+                    tempBullet.change.direction.change = (temp[name].change[actionCommands.label].direction.value + tempAngle) / tempBullet.change.direction.times;
                   }
                   break;
                 }
-                temp[name].fire.ref[actionCommands.label].direction.type = "sequence";
+                temp[name].change[actionCommands.label].direction.type = "sequence";
               }
               break;
               case "absolute": {
@@ -1228,30 +1269,30 @@
                 case "sequence":
                 case "sequenceAbsolute":
                 case "sequenceRelative": {
-                  if (typeof temp[name].fire.ref[actionCommands.label].speed.horizontal.value !== "number") {
+                  if (typeof temp[name].change[actionCommands.label].speed.horizontal.value !== "number") {
                     //Check for action base
                     if (typeof actionCommands.direction.base === "number") {
-                      temp[name].fire.ref[actionCommands.label].speed.horizontal.base = actionCommands.speed.horizontal.base;
+                      temp[name].change[actionCommands.label].speed.horizontal.base = actionCommands.speed.horizontal.base;
                     } else {
-                      temp[name].fire.ref[actionCommands.label].speed.horizontal.base = 0;
+                      temp[name].change[actionCommands.label].speed.horizontal.base = 0;
                     }
-                    temp[name].fire.ref[actionCommands.label].speed.horizontal.value = temp[name].fire.ref[actionCommands.label].speed.horizontal.base;
-                  } else if (typeof temp[name].fire.ref[actionCommands.label].speed.horizontal.value === "number") {
-                    temp[name].fire.ref[actionCommands.label].speed.horizontal.value += tempBullet.change.speed.horizontal.value;
-                    temp[name].fire.ref[actionCommands.label].speed.horizontal.root = tempBullet.change.speed.horizontal.value;
+                    temp[name].change[actionCommands.label].speed.horizontal.value = temp[name].change[actionCommands.label].speed.horizontal.base;
+                  } else if (typeof temp[name].change[actionCommands.label].speed.horizontal.value === "number") {
+                    temp[name].change[actionCommands.label].speed.horizontal.value += tempBullet.change.speed.horizontal.value;
+                    temp[name].change[actionCommands.label].speed.horizontal.root = tempBullet.change.speed.horizontal.value;
                   }
                   switch (tempBullet.change.speed.horizontal.type) {
                     case "sequence":
                     case "sequenceAbsolute": {
-                      tempBullet.change.speed.horizontal.change = (temp[name].fire.ref[actionCommands.label].speed.horizontal.value - tempBullet.speed.horizontal.value) / tempBullet.change.speed.horizontal.times;
+                      tempBullet.change.speed.horizontal.change = (temp[name].change[actionCommands.label].speed.horizontal.value - tempBullet.speed.horizontal.value) / tempBullet.change.speed.horizontal.times;
                     }
                     break;
                     case "sequenceRelative": {
-                      tempBullet.change.speed.horizontal.change = temp[name].fire.ref[actionCommands.label].speed.horizontal.value / tempBullet.change.speed.horizontal.times;
+                      tempBullet.change.speed.horizontal.change = temp[name].change[actionCommands.label].speed.horizontal.value / tempBullet.change.speed.horizontal.times;
                     }
                     break;
                   }
-                  temp[name].fire.ref[actionCommands.label].speed.horizontal.type = "sequence";
+                  temp[name].change[actionCommands.label].speed.horizontal.type = "sequence";
                 }
                 break;
                 case "absolute": {
@@ -1289,30 +1330,30 @@
                 case "sequence":
                 case "sequenceAbsolute":
                 case "sequenceRelative": {
-                  if (typeof temp[name].fire.ref[actionCommands.label].speed.vertical.value !== "number") {
+                  if (typeof temp[name].change[actionCommands.label].speed.vertical.value !== "number") {
                     //Check for action base
                     if (typeof actionCommands.direction.base === "number") {
-                      temp[name].fire.ref[actionCommands.label].speed.vertical.base = actionCommands.speed.vertical.base;
+                      temp[name].change[actionCommands.label].speed.vertical.base = actionCommands.speed.vertical.base;
                     } else {
-                      temp[name].fire.ref[actionCommands.label].speed.vertical.base = 0;
+                      temp[name].change[actionCommands.label].speed.vertical.base = 0;
                     }
-                    temp[name].fire.ref[actionCommands.label].speed.vertical.value = temp[name].fire.ref[actionCommands.label].speed.vertical.base;
-                  } else if (typeof temp[name].fire.ref[actionCommands.label].speed.vertical.value === "number") {
-                    temp[name].fire.ref[actionCommands.label].speed.vertical.value += tempBullet.change.speed.vertical.value;
-                    temp[name].fire.ref[actionCommands.label].speed.vertical.root = tempBullet.change.speed.vertical.value;
+                    temp[name].change[actionCommands.label].speed.vertical.value = temp[name].change[actionCommands.label].speed.vertical.base;
+                  } else if (typeof temp[name].change[actionCommands.label].speed.vertical.value === "number") {
+                    temp[name].change[actionCommands.label].speed.vertical.value += tempBullet.change.speed.vertical.value;
+                    temp[name].change[actionCommands.label].speed.vertical.root = tempBullet.change.speed.vertical.value;
                   }
                   switch (tempBullet.change.speed.vertical.type) {
                     case "sequence":
                     case "sequenceAbsolute": {
-                      tempBullet.change.speed.vertical.change = (temp[name].fire.ref[actionCommands.label].speed.vertical.value - tempBullet.speed.vertical.value) / tempBullet.change.speed.vertical.times;
+                      tempBullet.change.speed.vertical.change = (temp[name].change[actionCommands.label].speed.vertical.value - tempBullet.speed.vertical.value) / tempBullet.change.speed.vertical.times;
                     }
                     break;
                     case "sequenceRelative": {
-                      tempBullet.change.speed.vertical.change = temp[name].fire.ref[actionCommands.label].speed.vertical.value / tempBullet.change.speed.vertical.times;
+                      tempBullet.change.speed.vertical.change = temp[name].change[actionCommands.label].speed.vertical.value / tempBullet.change.speed.vertical.times;
                     }
                     break;
                   }
-                  temp[name].fire.ref[actionCommands.label].speed.vertical.type = "sequence";
+                  temp[name].change[actionCommands.label].speed.vertical.type = "sequence";
                 }
                 break;
                 case "absolute": {
@@ -1331,57 +1372,12 @@
         throw new Error("Change must be called in not fire actions");
       }
     },
-    normalize: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
-      if (flag[name].actions.ref[actionLabel]) {
-        switch (actionCommands.type) {
-          case "sequence": {
-            temp[name].fire.temp[actionLabel][checkLabel()].direction.value = normalizeAngle(temp[name].fire.temp[actionLabel][checkLabel()].direction.value);
-          }
-          break;
-          case "sequenceChange": {
-            if (actionCommands.isChange !== true) {
-              throw new Error("Label is not \"change\"");
-            }
-            temp[name].fire.ref[checkLabel(true)].direction.value = normalizeAngle(temp[name].fire.ref[checkLabel(true)].direction.value);
-          }
-          break;
-          default: {
-            //bullet process
-            if (mainActionLabel !== actionLabel) {
-              tempBullet.direction.value = normalizeAngle(tempBullet.direction.value);
-            } else {
-              throw new Error("Unknown normalize type");
-            }
-          }
-        }
-      } else {
-        throw new Error("Normalize must be called in not fire actions");
-      }
-      function checkLabel(isBullet) {
-        if (actionLabel === mainActionLabel) {
-          if (actionCommands.label) {
-            return actionCommands.label;
-          } else {
-            throw new Error("Label must be defined in normalize main action");
-          }
-        } else if (actionLabel !== mainActionLabel && tempBullet) {
-          if (actionCommands.label) {
-            return actionCommands.label;
-          } else if (!isBullet) {
-            return tempBullet.label;
-          }
-        } else {
-          throw new Error("Label must be defined in normalize commands");
-        }
-      }
-    },
     freeze: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
       
     },
     reset: function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
       //Set temp data
-      var tempData = temp[name].fire.temp[actionLabel][actionCommands.label];
-      var tempDataTwo = temp[name].fire.ref[actionCommands.label];
+      var tempData = temp[name].fire.temp[actionLabel][actionCommands.label], tempDataTwo = temp[name].change[actionCommands.label];
       //Check if sequence
       switch (actionCommands.type) {
         case "direction": {
@@ -1471,7 +1467,7 @@
         } else if (actionLabel === mainActionLabel) {
           //Check for label
           if (actionCommands.label) {
-            return temp[name].fire.data[actionLabel][tempLabel].type;
+            return temp[name].fire.data[tempBullet.location[tempBullet.location.length - 1]][tempLabel].type;
           } else {
             throw new Error("Label must be defined in vanish main action");
           }
