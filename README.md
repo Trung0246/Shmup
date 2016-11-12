@@ -1,7 +1,7 @@
 # Shmup
 A library for bullet hell in Javascript
 
-Development version: **1.1.1**
+Development version: **1.1.2**
 
 This is a development branch, [please go to stable branch for stable version](https://github.com/Trung0246/Shmup/tree/stable).
 
@@ -19,16 +19,16 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Nothing, this library is currently being write.
 
 ## Changelog:
-* Added new configs that specific {x:0,y:0} or [x, y]
-* Made it possible to make a bullet have movement based on another bullet
-* Made it possible for bullet fire from actionRef to get data from position configs
-* Added new type of change sequence that use temp data to hold sequence like fire sequence with like relative or absolute
-* Added normalize methods to normalize angle or bullet angle
-* Fixed bugs
+* Fixed some really stupid and annoying bugs (mostly focus on normalize)
+* Fixed some critical bugs that mess **everything** up
+* Changed commands *continue* to *move* because of old Internet Explorer
+* Changed code structure of *normalize* method
+* Added new tempBullet key location
 
 ## TODO list:
-* Add delta bullet value for angle and speed and add magnitude value
+* Add delta bullet value for angle and speed
 * Make possible to clear null bullet manual
+* Add local and global fire scope
 * Compress extend function to one
 * Compress horizontal and vertical to one
 * Remove error handling
