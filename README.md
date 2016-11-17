@@ -21,12 +21,12 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 ## Changelog:
 * Reduced JS Heap memory leak
 * Increased performance
+* Compressed extend function to one
 * Fixed bugs
 
 ## TODO list:
 * Add delta bullet value for angle and speed
 * Make possible to clear null bullet manual
 * Add local and global fire scope
-* Compress extend function to one
 * Compress horizontal and vertical to one
 * Remove error handling
