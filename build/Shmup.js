@@ -125,7 +125,7 @@
       temp[name].change = {};
     }
     //if (!temp[name].fire.data[actionLabel]) {}
-    temp[name].fire.data[actionLabel] = extend(flag[name].configs.fire);
+    temp[name].fire.data[actionLabel] = extend({deep: true, type: "three"}, {}, flag[name].configs.fire);
     
     if (!temp[name].fire.temp[actionLabel]) {
       temp[name].fire.temp[actionLabel] = {};
@@ -327,7 +327,7 @@
       actionCommands.label = randomString();
     }
     //Check for function
-    var tempActionCommands = extendRun(actionCommands);
+    var tempActionCommands = extend({deep: true, type: "one"}, {}, actionCommands);
     if (!tempActionCommands.label) {
       tempActionCommands.label = randomString();
     }
@@ -346,9 +346,17 @@
       actionCommands.label = randomString();
     }
     //Check for function
-    var tempActionCommands = extendRun(actionCommands);
-    if (tempActionCommands.type === "manual") {
-      tempActionCommands = extendWait(actionCommands);
+    var tempActionCommands;// = extendRun(actionCommands);
+    if (typeof actionCommands.type !== "function") {
+      if (actionCommands.type === "manual") {
+        tempActionCommands = extend({deep: true, type: "two"}, {}, actionCommands);
+      } else {
+        tempActionCommands = extend({deep: true, type: "one"}, {}, actionCommands);
+      }
+    } else if (actionCommands.type() === "manual") {
+      tempActionCommands = extend({deep: true, type: "two"}, {}, actionCommands);
+    } else {
+      tempActionCommands = extend({deep: true, type: "one"}, {}, actionCommands);
     }
     if (actionLabel === mainActionLabel) {
       temp[name].wait[actionLabel].label = tempActionCommands.label;
@@ -368,7 +376,7 @@
       actionCommands.label = randomString();
     }
     //Check for function
-    var tempActionCommands = extendRun(actionCommands);
+    var tempActionCommands = extend({deep: true, type: "two"}, {}, actionCommands);
     //Check for actionRef
     if (tempActionCommands.fireRef) {
       tempActionCommands.label = tempActionCommands.fireRef;
@@ -388,7 +396,7 @@
   };
   methods.vanish = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
     //Check for function
-    var tempActionCommands = extendRun(actionCommands);
+    var tempActionCommands = extend({deep: true, type: "one"}, {}, actionCommands);
     var tempType;
     //Check for mainAction
     if (actionLabel === mainActionLabel) {
@@ -409,10 +417,10 @@
     shot[flag[name].configs.shot[tempType].type].vanish(actionLabel, mainActionLabel, actionData, tempCommands, tempActionCommands, tempBullet);
   };
   methods.change = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
-    shot[flag[name].configs.shot[tempBullet.type].type].change(actionLabel, mainActionLabel, actionData, tempCommands, extendRun(actionCommands), tempBullet);
+    shot[flag[name].configs.shot[tempBullet.type].type].change(actionLabel, mainActionLabel, actionData, tempCommands, extend({deep: true, type: "two"}, {}, actionCommands), tempBullet);
   };
   methods.normalize = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
-    var tempActionCommands = extendRun(actionCommands);
+    var tempActionCommands = extend({deep: true, type: "one"}, {}, actionCommands);
     var tempFunc;
     switch (tempActionCommands.type) {
       case "sequence": {
@@ -439,11 +447,19 @@
     }
   };
   methods.freeze = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
-    var tempActionCommands = extendRun(actionCommands);
+    var tempActionCommands;// = extend({deep: true, type: "two"}, {}, actionCommands);
     //Check for if main action
     if (actionLabel === mainActionLabel) {
-      if (tempActionCommands.type === "manual") {
-        tempActionCommands = extendWait(actionCommands);
+      if (typeof actionCommands.type !== "function") {
+        if (actionCommands.type === "manual") {
+          tempActionCommands = extend({deep: true, type: "two"}, {}, actionCommands);
+        } else {
+          tempActionCommands = extend({deep: true, type: "one"}, {}, actionCommands);
+        }
+      } else if (actionCommands.type() === "manual") {
+        tempActionCommands = extend({deep: true, type: "two"}, {}, actionCommands);
+      } else {
+        tempActionCommands = extend({deep: true, type: "one"}, {}, actionCommands);
       }
     } else {
       throw new Error("Freeze command can only use in main action");
@@ -457,7 +473,7 @@
     shot[flag[name].configs.shot[temp[name].fire.data[actionLabel][tempActionCommands.label].type].type].freeze(actionLabel, mainActionLabel, actionData, tempCommands, tempActionCommands, tempBullet);
   };
   methods.reset = function(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet) {
-    var tempActionCommands = extendRun(actionCommands);
+    var tempActionCommands = extend({deep: true, type: "one"}, {}, actionCommands);
     var tempType;
     if (actionLabel === mainActionLabel) {
       if (tempActionCommands.label) {
@@ -500,7 +516,7 @@
           actionCommands.movement = tempData.movement;
         }
         if (!actionCommands.position && tempData.position) {
-          actionCommands.position = extend(tempData.position);
+          actionCommands.position = extend({deep: true, type: "three"}, {}, tempData.position);
         } else if (actionCommands.position && tempData.position) {
           if (!actionCommands.position.now && tempData.position.now) {
             actionCommands.position.now = tempData.position.now.slice();
@@ -510,7 +526,7 @@
           }
         }
         if (!actionCommands.direction && tempData.direction) {
-          actionCommands.direction = extend(tempData.direction);
+          actionCommands.direction = extend({deep: true, type: "three"}, {}, tempData.direction);
         } else if (actionCommands.direction && tempData.direction) {
           if (typeof actionCommands.direction.value !== "number") {
             actionCommands.direction.value = tempData.direction.value;
@@ -590,7 +606,7 @@
       }
       //Check fire label to set to fireRef
       if (!temp[name].fire.data[actionLabel][actionCommands.label]) {
-        temp[name].fire.data[actionLabel][actionCommands.label] = extend(actionCommands);
+        temp[name].fire.data[actionLabel][actionCommands.label] = extend({deep: true, type: "three"}, {}, actionCommands);
         //Delete unnecessary keys, previous use "delete"
         temp[name].fire.data[actionLabel][actionCommands.label].label = undefined;
         temp[name].fire.data[actionLabel][actionCommands.label].func = undefined;
@@ -1526,7 +1542,6 @@
       throw new Error("Label is not \"change\"");
     }
   }
-  //
   //Helper function
   function positionData(position, isSet) {
     if (!flag[name].configs.positionType) {
@@ -1590,66 +1605,40 @@
       throw new Error("Invalid data");
     }
   }
-  function extend(from, to) {
-    if (from == null || typeof from != "object") {
-      return from;
-    }
-    if (from.constructor != Object && from.constructor != Array) {
-      return from;
-    }
-    if (from.constructor == Date || from.constructor == RegExp || from.constructor == Function || from.constructor == String || from.constructor == Number || from.constructor == Boolean) {
-      return new from.constructor(from);
-    }
-    to = to || new from.constructor();
-    for (var name in from) {
-      to[name] = typeof to[name] == "undefined" ? extend(from[name], null) : to[name];
-    }
-    return to;
-  }
-  function extendRun(from, to) {
-    if (from == null || typeof from != "object") {
-      return from;
-    }
-    if (from.constructor != Object && from.constructor != Array) {
-      return from;
-    }
-    if (from.constructor == Date || from.constructor == RegExp || from.constructor == Function || from.constructor == String || from.constructor == Number || from.constructor == Boolean) {
-      return new from.constructor(from);
-    }
-    to = to || new from.constructor();
-    for (var name in from) {
-      to[name] = typeof to[name] == "undefined" ? typeof from[name] === "function" ? name === "movement" ? from[name] : from[name]() : extendRun(from[name], null) : to[name];
-    }
-    return to;
-  }
-  function extendWait(fromwhat) {
-    var key;
-    function betaRun(from, to) {
-      if (from == null || typeof from != "object") {
-        return from;
-      }
-      if (from.constructor != Object && from.constructor != Array) {
-        return from;
-      }
-      if (from.constructor == Date || from.constructor == RegExp || from.constructor == Function || from.constructor == String || from.constructor == Number || from.constructor == Boolean) {
-        return new from.constructor(from);
-      }
-      to = to || new from.constructor();
-      for (var name in from) {
-        if (name === "func" && from[name] === "wait" && key === undefined) {
-          key = "wait";
+  function extend() {
+    // Variables
+    var extended = {};
+    var deep = false, type, key;
+    var i = 0;
+    var length = arguments.length;
+    // Check if a deep merge
+    deep = arguments[0].deep;
+    type = arguments[0].type;
+    key = arguments[0].key || arguments[2].func;
+    i++;
+    // Merge the object into the extended object
+    var merge = function (obj) {
+      for ( var prop in obj ) {
+        if ( Object.prototype.hasOwnProperty.call( obj, prop ) ) {
+          // If deep merge and property is an object, merge properties
+          if ( deep && Object.prototype.toString.call(obj[prop]) === '[object Object]' ) {
+            extended[prop] = extend( {deep: true, type: type, key: key}, extended[prop], obj[prop] );
+          } else {
+            if ((key === "fire" && prop === "movement") || (key === "wait" && prop === "times" && type === "two") || (key === "freeze" && prop === "times" && type === "two")) {
+              extended[prop] = obj[prop];
+            } else {
+              extended[prop] = typeof obj[prop] === "function" && type !== "three" ? obj[prop]() : obj[prop];
+            }
+          }
         }
-        if (name === "func" && from[name] === "freeze" && key === undefined) {
-          key = "freeze";
-        }
-        if (name === "func" && from[name] === "direction" && key === undefined) {
-          key = "direction";
-        }
-        to[name] = typeof to[name] == "undefined" ? typeof from[name] === "function" ? ((key === "direction" && name === "movement") || (key === "wait" && name === "times") || (key === "freeze" && name === "times") ? from[name] : from[name]()) : betaRun(from[name], null, undefined) : to[name];
       }
-      return to;
+    };
+    // Loop through each object and conduct a merge
+    for ( ; i < length; i++) {
+      var obj = arguments[i];
+      merge(obj);
     }
-    return betaRun(fromwhat);
+    return extended;
   }
   //Math function
   function getAngle(angle) {
