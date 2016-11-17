@@ -1,7 +1,7 @@
 # Shmup
 A library for bullet hell in Javascript
 
-Development version: **1.1.2**
+Development version: **1.1.3**
 
 This is a development branch, [please go to stable branch for stable version](https://github.com/Trung0246/Shmup/tree/stable).
 
@@ -19,11 +19,9 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * Nothing, this library is currently being write.
 
 ## Changelog:
-* Fixed some really stupid and annoying bugs (mostly focus on normalize)
-* Fixed some critical bugs that mess **everything** up
-* Changed commands *continue* to *move* because of old Internet Explorer
-* Changed code structure of *normalize* method
-* Added new tempBullet key location
+* Reduced JS Heap memory leak
+* Increased performance
+* Fixed bugs
 
 ## TODO list:
 * Add delta bullet value for angle and speed
