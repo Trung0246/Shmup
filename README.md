@@ -13,6 +13,8 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
 [**DEMO FLOWER**](http://codepen.io/Trung0246/pen/amgZpd)
 
+[**SANDBOX**](http://codepen.io/Trung0246/pen/GNpdOq) (Have fun testing with my engine here)
+
 [**WIKI**](https://github.com/Trung0246/Shmup/wiki) (Warning: this is old wiki, not work with current version)
 
 ## Feature:
