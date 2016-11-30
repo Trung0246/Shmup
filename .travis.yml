@@ -1,0 +1,5 @@
+language: javascript
+javascript:
+- 6
+- 5
+script: build/Shmup.js
