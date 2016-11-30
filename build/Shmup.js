@@ -1,7 +1,7 @@
 (function(window) {
   'use strict';
   /*
-  Shmup.js v1.1.3
+  Shmup.js v1.1.4
   
   MIT License
 
@@ -36,6 +36,10 @@
   //Junk variable, do not touch
   var name, //Class name
       init; //Constructor
+      /*fastMath = new FMath({
+        resolution: 360 * 2
+        //https://github.com/Malharhak/fmath.js/blob/master/src/FMath.js
+      });*/
   
   //-------------- COMMANDS ZONE --------------
   commands.configs = function(configsData) {
@@ -713,6 +717,7 @@
                   temp[name].fire.temp[actionLabel][actionCommands.label].direction.base = 0;
                 }
                 temp[name].fire.temp[actionLabel][actionCommands.label].direction.value = temp[name].fire.temp[actionLabel][actionCommands.label].direction.base;
+                temp[name].fire.temp[actionLabel][actionCommands.label].direction.root = actionCommands.direction.value;
               } else if (typeof temp[name].fire.temp[actionLabel][actionCommands.label].direction.value === "number") {
                 temp[name].fire.temp[actionLabel][actionCommands.label].direction.value += actionCommands.direction.value;
                 temp[name].fire.temp[actionLabel][actionCommands.label].direction.root = actionCommands.direction.value;
@@ -757,6 +762,7 @@
                   temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.base = 1;
                 }
                 temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value = temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.base;
+                temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.root = actionCommands.speed.horizontal.value;
               } else if (typeof temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value === "number") {
                 temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.value += actionCommands.speed.horizontal.value;
                 temp[name].fire.temp[actionLabel][actionCommands.label].speed.horizontal.root = actionCommands.speed.horizontal.value;
@@ -793,6 +799,7 @@
                   temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.base = 1;
                 }
                 temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value = temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.base;
+                temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.root = actionCommands.speed.vertical.value;
               } else if (typeof temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value === "number") {
                 temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.value += actionCommands.speed.vertical.value;
                 temp[name].fire.temp[actionLabel][actionCommands.label].speed.vertical.root = actionCommands.speed.vertical.value;
@@ -841,6 +848,7 @@
       }
       temp[name].bullets[mainActionLabel][actionCommands.label].push(tempBullet);
       tempBullet = temp[name].bullets[mainActionLabel][actionCommands.label][temp[name].bullets[mainActionLabel][actionCommands.label].length - 1];
+      flag[name].configs.shot[tempBullet.type].fire(tempBullet);
       return tempBullet;
     },
     draw: function(tempBullet) {
@@ -880,10 +888,23 @@
       if (typeof tempBullet.movement === "function") {
         tempBullet.position.now = tempBullet.movement(positionData(tempBullet.position.now, true));
       } else {
-        //Main x movement
-        tempBullet.position.now[0] = Math.sin(getAngle(tempBullet.direction.value)) * tempBullet.speed.horizontal + tempBullet.position.now[0];
-        //Main y movement
-        tempBullet.position.now[1] = Math.cos(getAngle(tempBullet.direction.value)) * tempBullet.speed.vertical + tempBullet.position.now[1];
+        //Store temp data
+        if (!tempBullet.direction.temp) {
+          tempBullet.direction.temp = {};
+        }
+        if (tempBullet.direction.temp.value !== tempBullet.direction.value) {
+          //Cache data when change
+          tempBullet.direction.temp.value = tempBullet.direction.value;
+          tempBullet.direction.temp.sin = Math.sin(getAngle(tempBullet.direction.value));
+          tempBullet.direction.temp.cos = Math.cos(getAngle(tempBullet.direction.value));
+          tempBullet.position.now[0] = tempBullet.direction.temp.sin * tempBullet.speed.horizontal + tempBullet.position.now[0];
+          tempBullet.position.now[1] = tempBullet.direction.temp.cos * tempBullet.speed.vertical + tempBullet.position.now[1];
+        } else {
+          //Main x movement
+          tempBullet.position.now[0] = tempBullet.direction.temp.sin * tempBullet.speed.horizontal + tempBullet.position.now[0];
+          //Main y movement
+          tempBullet.position.now[1] = tempBullet.direction.temp.cos * tempBullet.speed.vertical + tempBullet.position.now[1];
+        }
       }
       return tempBullet;
     },
@@ -993,6 +1014,7 @@
                     temp[name].change[actionCommands.label].direction.base = 0;
                   }
                   temp[name].change[actionCommands.label].direction.value = temp[name].change[actionCommands.label].direction.base;
+                  temp[name].change[actionCommands.label].direction.root = tempBullet.change.direction.value;
                 } else if (typeof temp[name].change[actionCommands.label].direction.value === "number") {
                   temp[name].change[actionCommands.label].direction.value += tempBullet.change.direction.value;
                   temp[name].change[actionCommands.label].direction.root = tempBullet.change.direction.value;
@@ -1059,6 +1081,7 @@
                       temp[name].change[actionCommands.label].speed.horizontal.base = 0;
                     }
                     temp[name].change[actionCommands.label].speed.horizontal.value = temp[name].change[actionCommands.label].speed.horizontal.base;
+                    temp[name].change[actionCommands.label].speed.horizontal.root = tempBullet.change.speed.horizontal.value;
                   } else if (typeof temp[name].change[actionCommands.label].speed.horizontal.value === "number") {
                     temp[name].change[actionCommands.label].speed.horizontal.value += tempBullet.change.speed.horizontal.value;
                     temp[name].change[actionCommands.label].speed.horizontal.root = tempBullet.change.speed.horizontal.value;
@@ -1120,6 +1143,7 @@
                       temp[name].change[actionCommands.label].speed.vertical.base = 0;
                     }
                     temp[name].change[actionCommands.label].speed.vertical.value = temp[name].change[actionCommands.label].speed.vertical.base;
+                    temp[name].change[actionCommands.label].speed.vertical.root = tempBullet.change.speed.vertical.value;
                   } else if (typeof temp[name].change[actionCommands.label].speed.vertical.value === "number") {
                     temp[name].change[actionCommands.label].speed.vertical.value += tempBullet.change.speed.vertical.value;
                     temp[name].change[actionCommands.label].speed.vertical.root = tempBullet.change.speed.vertical.value;
@@ -1328,8 +1352,7 @@
         if ((temp[name].wait[actionLabel].times <= 0 || temp[name].wait[actionLabel].times === undefined)) {
           //Process to set wait label done to true
           if (temp[name].wait[actionLabel].times <= 0) {
-            temp[name].wait[actionLabel].times = undefined;
-            //temp[name].wait.fire[actionLabel][temp[name].wait[actionLabel].label].done = true;
+            temp[name].wait[actionLabel].times = undefined; //temp[name].wait.fire[actionLabel][temp[name].wait[actionLabel].label].done = true;
           }
           methods.actions(actionLabel, actionLabel, temp[name].commands[actionLabel][temp[name].commands[actionLabel].length - 1].actions, temp[name].commands[actionLabel], undefined, undefined);
         }
@@ -1513,10 +1536,15 @@
         return;
       }
       actionData = tempCommands[tempCommands.length- 1].actions;
-      mainLoop();
+      mainLoop(actionLabel, mainActionLabel, actionData, tempCommands, actionCommands, tempBullet);
+      //mainLoop();
     } catch (error) {
       
     }
+  }
+  function firstActionProcess(tempBullet, mainActionLabel) {
+    tempBullet = shot[tempBullet.type].draw(tempBullet);
+    methods.actions(tempBullet.actionRef, mainActionLabel, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, undefined, tempBullet);
   }
   //methods.normalize
   function checkLabel(isBullet, actionLabel, mainActionLabel, tempActionCommands, tempBullet) {
@@ -1575,10 +1603,6 @@
     }];
     temp[name].wait[actionLabel] = {};
   }
-  function firstActionProcess(tempBullet, mainActionLabel) {
-    tempBullet = shot[tempBullet.type].draw(tempBullet);
-    methods.actions(tempBullet.actionRef, mainActionLabel, tempBullet.commands[tempBullet.commands.length - 1].actions, tempBullet.commands, undefined, tempBullet);
-  }
   function randomString() {
     return (Math.random() * 1e36).toString(36);
   }
@@ -1606,6 +1630,7 @@
     }
   }
   function extend() {
+    //This function found somewhere on internet I forgot ...
     // Variables
     var extended = {};
     var deep = false, type, key;
