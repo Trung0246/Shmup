@@ -1,7 +1,7 @@
 # Shmup
 A library for bullet hell in Javascript
 
-Development version: **1.1.3**
+Development version: **1.1.4**
 
 This is a development branch, [please go to stable branch for stable version](https://github.com/Trung0246/Shmup/tree/stable).
 
@@ -13,20 +13,17 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
 [**DEMO FLOWER**](http://codepen.io/Trung0246/pen/amgZpd)
 
-[**WIKI**](https://github.com/Trung0246/Shmup/wiki)
+[**WIKI**](https://github.com/Trung0246/Shmup/wiki) (Warning: this is old wiki, not work with current version)
 
 ## Feature:
 * Nothing, this library is currently being write.
 
 ## Changelog:
-* Reduced JS Heap memory leak
-* Increased performance
-* Compressed extend function to one
-* Fixed bugs
+* Cached sin and cos for performance
+* Added new configs "fire" callback when bullet fire
 
 ## TODO list:
 * Add delta bullet value for angle and speed
 * Make possible to clear null bullet manual
-* Add local and global fire scope
 * Compress horizontal and vertical to one
 * Remove error handling
