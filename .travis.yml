@@ -1,13 +1,7 @@
 {
   "language": "node_js",
   "node_js": 6,
-  "group": "master",
+  "group": "master/build/Shmup.js",
   "dist": "precise",
-  "os": [
-    "window",
-    "linux",
-    "macos",
-    "android",
-    "ios"
-  ]
+  "os": "linux"
 }
