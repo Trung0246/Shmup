@@ -1,6 +1,6 @@
 /*
-  shortMethods.js v0.0.5
-  For Shmup.js 1.1.1
+  shortMethods.js v0.0.6
+  For Shmup.js 1.1.3 and higher?
   https://github.com/Trung0246/Shmup/new/master/plugins
 */
 
@@ -65,10 +65,11 @@ MD.s = function(HType, HValue, HBase, VType, VValue, VBase, oval) {
     oval: oval,
   };
 };
-MD.p = function(now, end) {
+MD.p = function(now, end, type) {
   return {
     now: now,
     end: end,
+    type: type,
   };
 };
 MD.v = function(type, value) {
@@ -102,11 +103,12 @@ MD.c = function(label, position, movement, direction, speed) {
     };
   }
 };
-MD.cp = function(now, end, times) {
+MD.cp = function(now, end, times, type) {
   return {
     now: now,
     end: end,
     times: times,
+    type: type,
   };
 };
 MD.cd = function(value, times, type, base, target) {
@@ -134,10 +136,11 @@ MD.cs = function(HValue, HTimes, HType, HBase, VValue, VTimes, VType, VBase) {
     },
   };
 };
-MD.fz = function(label, times) {
+MD.fz = function(label, type, times) {
   return {
     func: "freeze",
     label: label,
+    type: type,
     times: times,
   };
 };
