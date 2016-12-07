@@ -34,10 +34,6 @@
         maxGun: 0,
         maxProcess: 0,
       },
-      pool = {                  //Pool holder
-        gun: undefined,
-        process: undefined,
-      },
       process = {               //Process holder, use for bullet left in playground when gun deleted
         active: [],
         wait: {},
@@ -99,28 +95,29 @@
       throw new Error("Unknown maxProjectile");
     })();
     for (var key in main.projectile) {
-      if (!main.projectile[key].data.process) {
-        main.projectile[key].data.process = {
-          temp: [1337], //1337 act as a flag for run to check when run done
-          actions: undefined, //Actions function holder use with main.util.loop
-        };
-      }
-      if (!main.projectile[key].data.data) {
-        main.projectile[key].data.data = undefined;
-      }
-      if (!main.projectile[key].data.type) {
-        main.projectile[key].data.type = key;
-      }
-      if (!main.projectile[key].data.update) {
-        main.projectile[key].data.update = undefined;
-      }
-      if (!main.projectile[key].temp) {
-        main.projectile[key].temp = {};
-      }
-      //debugger;
-      if (!process.wait[key]) {
-        process.wait[key] = new Pool(main.projectile[key].data, main.maxProjectile, true);
-      }
+      if (main.projectile.hasOwnProperty(key)) {
+        if (!main.projectile[key].data.process) {
+          main.projectile[key].data.process = {
+            temp: [1337], //1337 act as a flag for run to check when run done
+            actions: undefined, //Actions function holder use with main.util.loop
+          };
+        }
+        if (!main.projectile[key].data.data) {
+          main.projectile[key].data.data = undefined;
+        }
+        if (!main.projectile[key].data.type) {
+          main.projectile[key].data.type = key;
+        }
+        if (!main.projectile[key].data.update) {
+          main.projectile[key].data.update = undefined;
+        }
+        if (!main.projectile[key].temp) {
+          main.projectile[key].temp = {};
+        }
+        if (!process.wait[key]) {
+          process.wait[key] = new Pool(main.projectile[key].data, main.maxProjectile, true);
+        }
+    	}
     }
     return;
   };
@@ -358,7 +355,7 @@
     this.last = this.size;
     this.isChange = isChange;
     return this;
-  };
+  }
   Pool.prototype.get = function(i) {
     i = i || 0;
     if (this.last <= 0) {
