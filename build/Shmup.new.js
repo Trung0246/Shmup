@@ -253,6 +253,21 @@
       debugMode: function() {
         debugger;
       },
+      activeSize: function() {
+        return process.active.length;
+      },
+    },
+  };
+  
+  main.plugin = {
+    projectile: function(type, data) {
+      main.projectile[type] = data;
+    },
+    uitl: function(type, data) {
+      main.util[type] = data;
+    },
+    math: function(type, data) {
+      main.math[type] = data;
     },
   };
   
