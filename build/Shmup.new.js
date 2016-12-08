@@ -274,7 +274,7 @@
       return -Math.atan2(start.x - target.x, -(start.y - target.y));
     },
     interpolation: {
-      //what the fuck is frame / time ?
+      //what the hell is frame / time ?
       //start and end use x with x and y with y
       linear: function(start, end, time) {
         return start + time * (end-start);
