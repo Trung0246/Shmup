@@ -123,14 +123,13 @@
   };
   main.update = function() {
     for (var projectileCount = process.active.length - 1; projectileCount >= 0; --projectileCount) {
-      if (process.active[projectileCount].update === undefined) {
-        process.active.splice(projectileCount, 1);
-      } else {
-        if (process.active[projectileCount].process.actions) {
+      if (process.active[projectileCount].process.actions) {
           process.active[projectileCount].process.actions();
         }
-        main.projectile[process.active[projectileCount].type].update(process.active[projectileCount]);
-        process.active[projectileCount].update(process.active[projectileCount]);
+      main.projectile[process.active[projectileCount].type].update(process.active[projectileCount]);
+      process.active[projectileCount].update(process.active[projectileCount]);
+      if (process.active[projectileCount].update === undefined) {
+        process.active.splice(projectileCount, 1);
       }
     }
   };
