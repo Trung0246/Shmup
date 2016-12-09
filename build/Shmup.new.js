@@ -2,7 +2,7 @@
   'use strict';
   /*
   Shmup.js v1.1.5
-  
+
   MIT License
 
   Copyright (c) 2016 Trung0246
@@ -25,26 +25,34 @@
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
   */
-  
+
+  /*
+  TODO:
+  -Test chained loop while active
+  -Add functions to add plugins
+  -make bullet class as another library
+  -Refire twice to test recreate handle
+  */
+
   //Important variable
-  var main = {                  //Main holder
+  var main = {       //Main holder
         angleType: "degree",
         positionType: "object",
         maxProjectile: 0,
         maxGun: 0,
         maxProcess: 0,
       },
-      process = {               //Process holder, use for bullet left in playground when gun deleted
+      process = {    //Process holder, use for bullet left in playground when gun deleted
         active: [],
         wait: {},
       },
-      temp = {                //Temp holder
+      temp = {       //Temp holder
         repeat: {},
       };
-  
+
   //Projectile classes
   main.projectile = {};
-  
+
   main.projectile.bullet = {
     data: {
       position: {
@@ -55,10 +63,9 @@
       speed: 0,
     },
     create: function(data) {
-      //debugger;
       var projectile = process.wait.bullet.get();
       if (data.data) {
-        projectile.data = JSON.parse(JSON.stringify(data.data));
+        projectile.data = data.data;
       }
       projectile.position.x = data.position.x || 0;
       projectile.position.y = data.position.y || 0;
@@ -87,7 +94,58 @@
       projectile.position.y = Math.cos(projectile.angle) * projectile.speed + projectile.position.y;
     },
   };
-  
+
+  main.projectile.laser = {
+    data: {
+      position: {
+        start: {
+          x: 0,
+          y: 0,
+        },
+        end: {
+          x: 0,
+          y: 0,
+        },
+        anchor: {
+          value: 0, //0: start to 1: end
+          x: 0,
+          y: 0,
+        },
+      },
+      distance: 0,
+      angle: 0,
+      speed: 0,
+      instant: false,
+    },
+    create: function(data) {
+      var projectile = process.wait.laser.get();
+      if (data.data) {
+        projectile.data = data.data;
+      }
+      projectile.distance = projectile.distance || 0;
+      projectile.position.start.x = data.position.start.x || 0;
+      projectile.position.start.y = data.position.start.y || 0;
+      projectile.position.end.x = data.position.end.x || 0;
+      projectile.position.end.y = data.position.end.y || 0;
+      projectile.position.anchor = data.position.anchor || 0;
+      projectile.angle = data.angle || 0;
+      projectile.speed = data.speed || 0;
+      projectile.instant = data.instant || false;
+      projectile.update = data.update;
+      if (data.process) {
+        projectile.process.actions = Shmup.util.loop(data.process.condition, data.process.actions, false, projectile);
+      }
+      process.active.push(projectile);
+      return projectile;
+    },
+    vanish: function() {
+
+    },
+    update: function() {
+
+    },
+  };
+
   main.configs = function(configsData) {
     main.angleType = configsData.angleType || "degree";
     main.positionType = configsData.positionType || "object";
@@ -124,8 +182,8 @@
   main.update = function() {
     for (var projectileCount = process.active.length - 1; projectileCount >= 0; --projectileCount) {
       if (process.active[projectileCount].process.actions) {
-          process.active[projectileCount].process.actions();
-        }
+        process.active[projectileCount].process.actions();
+      }
       main.projectile[process.active[projectileCount].type].update(process.active[projectileCount]);
       process.active[projectileCount].update(process.active[projectileCount]);
       if (process.active[projectileCount].update === undefined) {
@@ -133,7 +191,7 @@
       }
     }
   };
-  
+
   //Utilities class
   main.util = {
     loop: function (condition, actions, isMain, repeatData) {
@@ -246,7 +304,7 @@
       };
     },
     clear: function(all) {
-      
+
     },
     debug: {
       debugMode: function() {
@@ -257,19 +315,20 @@
       },
     },
   };
-  
+
+  //Plugin class
   main.plugin = {
     projectile: function(type, data) {
       main.projectile[type] = data;
     },
-    uitl: function(type, data) {
+    util: function(type, data) {
       main.util[type] = data;
     },
     math: function(type, data) {
       main.math[type] = data;
     },
   };
-  
+
   //Math class
   main.math = {
     oval: function(position, horizontal, vertical, fireAngle, spinAngle) {
@@ -288,7 +347,7 @@
       return -Math.atan2(start.x - target.x, -(start.y - target.y));
     },
     interpolation: {
-      //what the hell is frame / time ?
+      //what the fuck is frame / time ?
       //start and end use x with x and y with y
       linear: function(start, end, time) {
         return start + time * (end-start);
@@ -341,7 +400,7 @@
       return degree;
     },
   };
-  
+
   //Do not touch these code
   if (typeof define === 'function' && define.amd) {
     define(function() {
@@ -369,7 +428,7 @@
     this.last = this.size;
     this.isChange = isChange;
     return this;
-  }
+  };
   Pool.prototype.get = function(i) {
     i = i || 0;
     if (this.last <= 0) {
