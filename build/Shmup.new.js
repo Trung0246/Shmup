@@ -1,7 +1,7 @@
 (function(window) {
   'use strict';
   /*
-  Shmup.js v1.1.5
+  Shmup.js v1.2
 
   MIT License
 
@@ -28,19 +28,24 @@
 
   /*
   TODO:
-  -Test chained loop while active
-  -Add functions to add plugins
   -make bullet class as another library
-  -Refire twice to test recreate handle
   */
 
   //Important variable
-  var main = {       //Main holder
+  var main = {},       //Main holder
+      data = {
         angleType: "degree",
         positionType: "object",
         maxProjectile: 0,
-        maxGun: 0,
-        maxProcess: 0,
+        scene: {
+          size: {
+            x: 0,
+            y: 0,
+          },
+          boundary: 0,
+        },
+        //maxGun: 0,
+        //maxProcess: 0,
       },
       process = {    //Process holder, use for bullet left in playground when gun deleted
         active: [],
@@ -53,103 +58,13 @@
   //Projectile classes
   main.projectile = {};
 
-  main.projectile.bullet = {
-    data: {
-      position: {
-        x: 0,
-        y: 0,
-      },
-      angle: 0,
-      speed: 0,
-    },
-    create: function(data) {
-      var projectile = process.wait.bullet.get();
-      if (data.data) {
-        projectile.data = data.data;
-      }
-      projectile.position.x = data.position.x || 0;
-      projectile.position.y = data.position.y || 0;
-      projectile.angle = data.angle || 0;
-      projectile.speed = data.speed || 0;
-      projectile.update = data.update;
-      if (data.process) {
-        projectile.process.actions = Shmup.util.loop(data.process.condition, data.process.actions, false, projectile);
-      }
-      process.active.push(projectile);
-      return projectile;
-    },
-    vanish: function(projectile) {
-      projectile.position.x = 0;
-      projectile.position.y = 0;
-      projectile.angle = 0;
-      projectile.speed = 0;
-      projectile.data = undefined;
-      projectile.update = undefined;
-      projectile.process.actions = undefined;
-      projectile.process.temp = [1337];
-      process.wait.bullet.set(projectile);
-    },
-    update: function(projectile) {
-      projectile.position.x = Math.sin(projectile.angle) * projectile.speed + projectile.position.x;
-      projectile.position.y = Math.cos(projectile.angle) * projectile.speed + projectile.position.y;
-    },
-  };
-
-  main.projectile.laser = {
-    data: {
-      position: {
-        start: {
-          x: 0,
-          y: 0,
-        },
-        end: {
-          x: 0,
-          y: 0,
-        },
-        anchor: {
-          value: 0, //0: start to 1: end
-          x: 0,
-          y: 0,
-        },
-      },
-      distance: 0,
-      angle: 0,
-      speed: 0,
-      instant: false,
-    },
-    create: function(data) {
-      var projectile = process.wait.laser.get();
-      if (data.data) {
-        projectile.data = data.data;
-      }
-      projectile.distance = projectile.distance || 0;
-      projectile.position.start.x = data.position.start.x || 0;
-      projectile.position.start.y = data.position.start.y || 0;
-      projectile.position.end.x = data.position.end.x || 0;
-      projectile.position.end.y = data.position.end.y || 0;
-      projectile.position.anchor = data.position.anchor || 0;
-      projectile.angle = data.angle || 0;
-      projectile.speed = data.speed || 0;
-      projectile.instant = data.instant || false;
-      projectile.update = data.update;
-      if (data.process) {
-        projectile.process.actions = Shmup.util.loop(data.process.condition, data.process.actions, false, projectile);
-      }
-      process.active.push(projectile);
-      return projectile;
-    },
-    vanish: function() {
-
-    },
-    update: function() {
-
-    },
-  };
-
   main.configs = function(configsData) {
-    main.angleType = configsData.angleType || "degree";
-    main.positionType = configsData.positionType || "object";
-    main.maxProjectile = configsData.maxProjectile || (function() {
+    data.angleType = configsData.angleType || "degree";
+    data.positionType = configsData.positionType || "object";
+    data.scene = configsData.scene || (function() {
+      throw new Error("Unknown scene size");
+    })();
+    data.maxProjectile = configsData.maxProjectile || (function() {
       throw new Error("Unknown maxProjectile");
     })();
     for (var key in main.projectile) {
@@ -173,12 +88,13 @@
           main.projectile[key].temp = {};
         }
         if (!process.wait[key]) {
-          process.wait[key] = new Pool(main.projectile[key].data, main.maxProjectile, true);
+          process.wait[key] = new Pool(main.projectile[key].data, data.maxProjectile, true);
         }
-    	}
+      }
     }
     return;
   };
+  
   main.update = function() {
     for (var projectileCount = process.active.length - 1; projectileCount >= 0; --projectileCount) {
       if (process.active[projectileCount].process.actions) {
@@ -209,7 +125,6 @@
       }
       function mainProcess() {
         var tempData, tempBool, tempProcess;
-        //debugger;
         if (typeof repeatData === "string") {
           if (!temp.repeat[repeatData]) {
             temp.repeat[repeatData] = [{
@@ -297,22 +212,56 @@
         }
       }
     },
-    wait: function(condition) {
-      return {
-        type: "wait",
-        condition: condition,
-      };
+    wait: function(type, condition, returnFunc, waitData) {
+      switch (type) {
+        case 0: {
+          return condition();
+        }
+        break;
+        case 1: {
+          return {
+            type: "wait",
+            condition: condition,
+          };
+        }
+        break;
+        case 2: {
+          waitData = condition;
+          return waitTime;
+        }
+        break;
+        case 3: {
+          waitData = condition;
+          return {
+            type: "wait",
+            condition: waitTime,
+          };
+        }
+        break;
+        default: {
+          throw new Error("Unknown wait type");
+        }
+      }
+      function waitTime(returnData) {
+        if (waitData <= 0) {
+          waitData = condition;
+          returnFunc(returnData);
+          return false;
+        } else {
+          waitData -= 1;
+          returnFunc(returnData);
+          return true;
+        }
+      }
     },
-    clear: function(all) {
-
+  };
+  
+  main.advanced = {
+    debugMode: function() {
+      debugger;
     },
-    debug: {
-      debugMode: function() {
-        debugger;
-      },
-      activeSize: function() {
-        return process.active.length;
-      },
+    process: function() {
+      return process;
     },
   };
 
@@ -337,26 +286,81 @@
       tempPos.y = position.y + vertical * Math.sin(fireAngle) * Math.cos(spinAngle) + horizontal * Math.cos(fireAngle) * Math.sin(spinAngle);
       return {
         angle: main.math.aim(position, tempPos),
-        speed: main.math.pythagorean(position, tempPos),
+        speed: main.math.pythagorean(true, position, tempPos),
       };
     },
-    pythagorean: function(locationOne, locationTwo) {
-      return Math.sqrt(Math.pow(locationOne.x - locationTwo.x, 2) + Math.pow(locationOne.y - locationTwo.y, 2));
+    pythagorean: function(type, locationOne, locationTwo) {
+      if (type) {
+        return Math.sqrt(Math.pow(locationOne.x - locationTwo.x, 2) + Math.pow(locationOne.y - locationTwo.y, 2));
+      } else {
+        return Math.sqrt(Math.pow(locationOne, 2) + Math.pow(locationTwo, 2));
+      }
     },
     aim: function(start, target) {
       return -Math.atan2(start.x - target.x, -(start.y - target.y));
     },
+    pointBetween: function(start, end, location) {
+      //http://jsfiddle.net/3SY8v/
+      var xlen = end.x - start.x;
+      var ylen = end.y - start.y;
+      var hlen = main.math.pythagorean(false, xlen, ylen);
+      var smallerXLen = xlen * location;
+      var smallerYLen = ylen * location;
+      return {
+        x: start.x + smallerXLen,
+        y: start.y + smallerYLen,
+      };
+    },
     interpolation: {
-      //what the fuck is frame / time ?
+      //what the hell is frame / time ?
       //start and end use x with x and y with y
       linear: function(start, end, time) {
-        return start + time * (end-start);
+        return start + time * (end - start);
       },
-      smoothStep: function(start, end, time) {
-        return start + Math.pow(time, 2) * (3 - 2 * time) * (end - start);
-      },
-      smootherStep: function(start, end, time) {
-        return start + Math.pow(time, 3) * (time * (time * 6 - 15) + 10) * (end - start);
+      smoothStep: function(order, start, end, time) {
+        if (order <= 0 || time < 0 || time > 1) {
+          throw new Error("smoothStep out of range");
+        }
+        switch (order) {
+          case 2: {
+            return start + Math.pow(time, 2) * (3 - 2 * time) * (end - start);
+          }
+          break;
+          case 3: {
+            return start + Math.pow(time, 3) * (time * (time * 6 - 15) + 10) * (end - start);
+          }
+          break;
+          case 4: {
+            return start + Math.pow(time, 4) * (35 + time * (-84 + (70 - 20 * time) * time)) * (end - start);
+          }
+          break;
+          case 5: {
+            return start + Math.pow(time, 5) * (126 + 5 * time * (-84 + time * (108 + 7 * time * (-9 + 2 * time)))) * (end - start);
+          }
+          break;
+          case 6: {
+            return start + Math.pow(time, 6) * (462 + time * (-1980 - 7 * time * (-495 + 2 * time * (220 + 9 * time * (-11 + 2 * time))))) * (end - start);
+          }
+          break;
+          case 7: {
+            return start + Math.pow(time, 7) * (1716 + 7 * time * (-1287 + 2 * time * (1430 + 3 * time * (-572 + time * (390 + 11 * time * (-13 + 2 * time)))))) * (end - start);
+          }
+          break;
+          default: {
+            var pascalTriangle = function(a, b) {
+              var result = 1; 
+              for(var i = 1; i <= b; i++){
+                result *= ((a - (i - 1)) / i);
+              }
+              return result;
+            }
+            var result = 0;
+            for (var n = 0; n <= order - 1; n++) {
+              result += (pascalTriangle(-order, n) * pascalTriangle(2 * order - 1, order - n - 1) * Math.pow(time, order + n));
+            }
+            return main.math.interpolation.linear(start, end, result);
+          }
+        }
       },
       acceleration: function(start, end, time) {
         var temp = Math.pow(time, 2);
@@ -369,6 +373,44 @@
       overShoot: function(start, end, time, magnitude) {
         time = main.math.interpolation.deceleration(0, 1, time);
         return start + time * (end-start) * (1 + Math.sin(time * 180) * magnitude);
+      },
+    },
+    bounce: function(angle, angleBounce) {
+      angle += angleBounce;
+      angle = Shmup.math.normalizeRadian(angle);
+      angle *= -1;
+      return angle;
+    },
+    teleport: function(type, position) {
+      var tempPos = {
+        x: position.x,
+        y: position.y,
+      };
+      if (tempPos.x < -data.scene.boundary) {
+        tempPos.x += data.scene.size.x;
+      } else if (data.scene.size.x + data.scene.boundary < tempPos.x) {
+        tempPos.x -= data.scene.size.x;
+      } else if (tempPos.y < -data.scene.boundary) {
+        tempPos.y += data.scene.size.y;
+      } else if (data.scene.size.y + data.scene.boundary < tempPos.y) {
+        tempPos.y -= data.scene.size.y;
+      }
+      return tempPos;
+    },
+    product: {
+      normalize: function(position) {
+        var length = Math.sqrt(position.x * position.x + position.y * position.y);
+        position.x = position.x / length;
+        position.y = position.y / length;
+        return v;
+      },
+      dot: function(posOne, posTwo) {
+        //Heavily related to cosine
+        return posOne.x * posTwo.x + posOne.y * posTwo.y;
+      },
+      cross: function(posOne, posTwo) {
+        //Heavily related to sine
+        return posOne.x * posTwo.y - posOne.y * posTwo.x;
       },
     },
     radToDeg: function(radian) {
