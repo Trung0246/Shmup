@@ -1,7 +1,7 @@
 # Shmup
 A library for bullet hell in Javascript
 
-Stable version: **1.1.4**
+Development version: **1.2.1**
 
 This is the development branch, [please go to stable branch for stable version](https://github.com/Trung0246/Shmup/tree/stable-1.1.4).
 
@@ -24,5 +24,7 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * ...
 
 ## Changelog:
-* Cached sin and cos for performance
-* Added new configs "fire" callback when bullet fire
+* Rewrote WHOLE F\*CKING library
+* Added heck lots of mathematics tools
+* Added three basic projectile plugins
+* Performance increase and better than 1.1.4
