@@ -3,7 +3,7 @@ A library for bullet hell in Javascript
 
 Stable version: **1.1.4**
 
-This is the stable branch, [please go to master branch for development version](https://github.com/Trung0246/Shmup/tree/master).
+This is the development branch, [please go to stable branch for stable version](https://github.com/Trung0246/Shmup/tree/stable-1.1.4).
 
 Some feature were borrowed from java library bulletml by Kenta Cho :
 
