@@ -1,7 +1,7 @@
 # Shmup
 A library for bullet hell in Javascript
 
-Stable version: **1.0.12**
+Stable version: **1.1.4**
 
 This is the stable branch, [please go to master branch for development version](https://github.com/Trung0246/Shmup/tree/master).
 
@@ -13,7 +13,10 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
 [**DEMO FLOWER**](http://codepen.io/Trung0246/pen/amgZpd)
 
-[**WIKI**](https://github.com/Trung0246/Shmup/wiki)
+[**SANDBOX**](http://codepen.io/Trung0246/pen/GNpdOq) (Have fun testing with my engine here)
+
+[**WIKI**](https://github.com/Trung0246/Shmup/wiki) (Warning: this is old wiki, not work with current version)
+
 
 ## Feature:
 * Fire beautiful pattern as shown above.
@@ -22,10 +25,5 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 * ...
 
 ## Changelog:
-* A special update for fellows /r/touhou :)
-* Fixed *multiply* type to make it possible like *plus*
-* Added *aim* type for *change* method
-* Added *absolute* type for *change* method
-* Renamed old type for *change* method
-* Added shortcutMethods.js plugins to reduce letter need to type to execute methods
-* Added new demo *flower.js*
+* Cached sin and cos for performance
+* Added new configs "fire" callback when bullet fire
