@@ -1,0 +1,16 @@
+breaking this file because I currently learning how to use travis so do not expect this to pass
+{
+  "language": "node_js",
+  "node_js": 6,
+  "group": "master",
+  "script": "Shmup.js",
+  "env": "CXX=g++-4.8",
+  "addons": {
+    "apt": {
+      "sources": "ubuntu-toolchain-r-test",
+      "packages": "g++-4.8"
+    },
+  },
+  "dist": "precise",
+  "os": "linux"
+}

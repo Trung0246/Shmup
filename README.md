@@ -17,7 +17,6 @@ www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
 [**WIKI**](https://github.com/Trung0246/Shmup/wiki) (Warning: this is old wiki, not work with current version)
 
-
 ## Feature:
 * Fire beautiful pattern as shown above.
 * Aim to target.
