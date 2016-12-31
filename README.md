@@ -5,22 +5,19 @@ Development version: **1.2.1**
 
 This is the development branch, [please go to stable branch for stable version](https://github.com/Trung0246/Shmup/tree/stable-1.1.4).
 
-Some feature were borrowed from java library bulletml by Kenta Cho :
+Some feature were borrowed from java library bulletml by Kenta Cho and Danmakufu Engine by MKM :
 
 www.asahi-net.or.jp/~cs8k-cyu/bulletml/index_e.html
 
-[**DEMO**](http://codepen.io/Trung0246/pen/EgAyRZ)
+http://www.geocities.co.jp/SiliconValley-Oakland/9951/pre/th_dnh_ph3.html
 
-[**DEMO FLOWER**](http://codepen.io/Trung0246/pen/amgZpd)
-
-[**SANDBOX**](http://codepen.io/Trung0246/pen/GNpdOq) (Have fun testing with my engine here)
-
-[**WIKI**](https://github.com/Trung0246/Shmup/wiki) (Warning: this is old wiki, not work with current version)
+**DEMO** [WIP]
 
 ## Feature:
 * Fire beautiful pattern as shown above.
 * Aim to target.
 * Modify bullet data while firing.
+* Separate task...
 * ...
 
 ## Changelog:
