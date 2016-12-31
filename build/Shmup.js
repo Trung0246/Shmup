@@ -145,7 +145,7 @@
     data.frame += 1;
     for (var taskCount = temp.task.length - 1; taskCount >= 0; --taskCount) {
       var result = temp.task[taskCount].next();
-      if (result.done === true) {
+      if (result.done === true || temp.task[taskCount].configs.update === false) {
         if (temp.task[taskCount].configs.reset === true) {
           temp.task[taskCount].reset();
           taskCount ++;
@@ -415,14 +415,6 @@
       }
       return tempPos;
     },
-    skeleton: function(child, parent) {
-      mag.x = (posOne.x + posTwo.x) * 0.5;
-      mag.y = (posOne.y + posTwo.y) * 0.5;
-      angle = Math.acos((speed1 * speed2) / main.math.product.dot(position1, position2));
-    },
-    transform3D: function() {
-      //Wait for bloom engine to implement this one
-    },
   };
   
   //Gun class
@@ -584,106 +576,72 @@
           other: tempResult,
         };
       },
-      quadrilateral: function(position, data, angle) {
+      polygon: function(position, vertex, angle, keep) {
         position = position || {};
         position.x = position.x || 0;
         position.y = position.y || 0;
-        data = data || {};
-        data.width = data.width || 0;
-        data.height = data.height || 0;
+        if (vertex.length < 3) {
+          throw new Error("Vertex must not smaller than 3");
+        }
         angle = angle || 0;
-        //Angle check
-        /*if (shortCheck(data.one.angle)) {
-          
-        }
-        if () {
-          
-        }
-        if () {
-          
-        }
-        if () {
-          
-        }*/
-        var corner = {
-          one: {
-            x: position.x + Math.sin(data.one.angle) * data.one.radius,
-            y: position.y + Math.cos(data.one.angle) * data.one.radius,
-          },
-          two: {
-            x: position.x + Math.sin(data.two.angle) * data.two.radius,
-            y: position.y + Math.cos(data.two.angle) * data.two.radius,
-          },
-          three: {
-            x: position.x + Math.sin(data.three.angle) * data.three.radius,
-            y: position.y + Math.cos(data.three.angle) * data.three.radius,
-          },
-          four: {
-            x: position.x + Math.sin(data.four.angle) * data.four.radius,
-            y: position.y + Math.cos(data.four.angle) * data.four.radius,
-          },
+        vertex.sort(function (a, b) {
+          var tempA = main.math.angle.radian.to.full(a.angle),
+          tempB = main.math.angle.radian.to.full(b.angle);
+          if (tempA < tempB) {
+            return -1;
+          }
+          if (tempA > tempB) {
+            return 1;
+          }
+          if (tempA === tempB) {
+            throw new Error("Vertex " + vertex.indexOf(a) + " and vertex " + vertex.indexOf(b) + " have same angle");
+          }
+          return 0;
+        });
+        vertex[0].position = {
+          x: position.x + vertex[0].radius * Math.sin(vertex[0].angle),
+          y: position.y + vertex[0].radius * Math.cos(vertex[0].angle),
         };
-        var normalized = main.math.angle.radian.normalize(angle.value);
-        var tempPos = {
-          x: position.x + Math.sin(normalized),
-          y: position.y + Math.cos(normalized),
-        };
-        normalized = main.math.angle.radian.to.full(normalized);
         var result;
-        var tempAim = {
-          four: main.math.angle.radian.to.full(main.math.angle.aim(position, corner.four)),
-          one: main.math.angle.radian.to.full(main.math.angle.aim(position, corner.one)),
-          two: main.math.angle.radian.to.full(main.math.angle.aim(position, corner.two)),
-          three: main.math.angle.radian.to.full(main.math.angle.aim(position, corner.three)),
-        };
-        var tempResult = {
-          bottom: main.math.line.intersect(corner.four, corner.one, position, tempPos),
-          right: main.math.line.intersect(corner.one, corner.two, position, tempPos),
-          top: main.math.line.intersect(corner.two, corner.three, position, tempPos),
-          left: main.math.line.intersect(corner.three, corner.four, position, tempPos),
-        };
-        var checkSide = {
-          right: false,
-          top: false,
-          left: false,
-        };
-        //"Magic" number: 3.141592653589792, 6.283185307179582, f*ck them all >:(
-        checkSide.right = main.math.line.distance(corner.one, corner.two, tempResult.right) <= 0;
-        checkSide.top = main.math.line.distance(corner.two, corner.three, tempResult.top) <= 0;
-        checkSide.left = main.math.line.distance(corner.three, corner.four, tempResult.left) <= 0;
-        if (checkSide.right) {
-          result = tempResult.right;
-        } else if (checkSide.top) {
-          result = tempResult.top;
-        } else if (checkSide.left) {
-          result = tempResult.left;
-        } else {
-          result = tempResult.bottom;
+        for (var vertexCount = 1; vertexCount < vertex.length; vertexCount ++) {
+          vertex[vertexCount].position = {
+            x: position.x + vertex[vertexCount].radius * Math.sin(vertex[vertexCount].angle),
+            y: position.y + vertex[vertexCount].radius * Math.cos(vertex[vertexCount].angle),
+          };
+          if (!result && main.math.angle.on(main.math.angle.aim(position, vertex[vertexCount - 1]), main.math.angle.aim(position, vertex[vertexCount]), angle)) {
+            result = main.math.line.intersect(position, {
+              x: position.x + 2 * Math.sin(angle),
+              y: position.y + 2 * Math.cos(angle),
+            }, vertex[vertexCount - 1], vertex[vertexCount]);
+          } else if (vertexCount + 1 >= vertex.length) {
+            result = main.math.line.intersect(position, {
+              x: position.x + 2 * Math.sin(angle),
+              y: position.y + 2 * Math.cos(angle),
+            }, vertex[vertexCount], vertex[0]);
+          }
+          if (result && keep) {
+            break;
+          }
         }
-        return {
-          angle: main.math.angle.aim(position, result),
-          speed: main.math.point.pythagorean(true, position, result, true),
-          data: result,
-          other: tempResult,
-        };
-        function shortCheck(angleCheck) {
-          return main.math.number.roundoff(main.math.angle.radian.to.full(main.math.angle.radian.normalize(angleCheck)));
-        }
+        result.vertex = vertex;
+        result.angle = main.math.angle.aim(position, result);
+        result.speed = main.math.point.pythagorean(true, position, result, true);
+        return result;
       },
-      polygon: function(position, data, angle) {
+      convex: function(position, data, angle) {
         position = position || {};
         position.x = position.x || 0;
         position.y = position.y || 0;
         data = data || {};
-        data.vertex = data.vertex || 2;
-        if (data.vertex < 2) {
-          throw new Error("Vertex must not smaller than 2");
+        data.vertex = data.vertex || 3;
+        if (data.vertex < 3) {
+          throw new Error("Vertex must not smaller than 3");
         }
         data.radius = data.radius || 1;
         angle = angle || {};
         angle.value = angle.value || 0;
         angle.rotate = angle.rotate || 0;
-        var vertex = [], tempRotate = main.math.constant.tau / data.vertex, normalized = main.math.number.roundoff(main.math.angle.radian.to.full(main.math.angle.radian.normalize(angle.rotate))), tempAim, result;
+        var vertex = [], tempRotate = main.math.constant.tau / data.vertex, normalized = main.math.number.roundoff(main.math.angle.radian.to.full(main.math.angle.radian.normalize(angle.value))), result;
         vertex.push({
           x: position.x + data.radius * Math.sin(tempRotate + angle.rotate),
           y: position.y + data.radius * Math.cos(tempRotate + angle.rotate),
@@ -693,19 +651,24 @@
             x: position.x + data.radius * Math.sin(tempRotate * (vertexCount + 1) + angle.rotate),
             y: position.y + data.radius * Math.cos(tempRotate * (vertexCount + 1) + angle.rotate),
           });
-          //TODO: fix the angle comparision
-          if (!result && Shmup.math.angle.on/*normalized >= main.math.angle.radian.to.full(main.math.angle.aim(position, vertex[vertexCount - 1])) && normalized < main.math.angle.radian.to.full(main.math.angle.aim(position, vertex[vertexCount]))*/) {
+          if (!result && main.math.angle.on(main.math.angle.aim(position, vertex[vertexCount - 1]), main.math.angle.aim(position, vertex[vertexCount]), normalized)) {
             result = main.math.line.intersect(position, {
               x: position.x + data.radius * Math.sin(angle.value),
               y: position.y + data.radius * Math.cos(angle.value),
             }, vertex[vertexCount - 1], vertex[vertexCount]);
+          } else if (vertexCount + 1 >= data.vertex) {
+            result = main.math.line.intersect(position, {
+              x: position.x + data.radius * Math.sin(angle.value),
+              y: position.y + data.radius * Math.cos(angle.value),
+            }, vertex[vertexCount], vertex[0]);
           }
           if (result && !data.keep) {
             break;
           }
         }
-        console.log(vertex);
         result.vertex = vertex;
+        result.angle = main.math.angle.aim(position, result);
+        result.speed = main.math.point.pythagorean(true, position, result, true);
         return result;
       },
       star: function(position, data, angle) {
@@ -784,8 +747,6 @@
       },
     },
     interpolation: {
-      //what the hell is frame / time ?
-      //start and end use x with x and y with y
       linear: function(start, end, time) {
         return start + time * (end - start);
       },
@@ -976,9 +937,6 @@
             y: position.y + (speed * Math.sin(angle) * time - accel * Math.pow(time, power) / division),
           };
         }
-      },
-      hyperbola: function() {
-        
       },
       spirograph: function(type, position, data, time, swap) {
         //http://www.mathematische-basteleien.de/spirographs.htm
