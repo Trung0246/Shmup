@@ -1,5 +1,3 @@
-//For use with Shmup.js v1.2.1
-
 Shmup.plugin.projectile("bullet", {
   data: {
     position: {
@@ -42,7 +40,7 @@ Shmup.plugin.projectile("bullet", {
   },
 });
 
-//TODO: when change speed will affect like spawn, may also add bounce too
+//TODO: when change speed will affect like spawn, may also add bounce too, and distance will affect location of two head and include anchor
 Shmup.plugin.projectile("laser", {
   data: {
     position: {
@@ -89,7 +87,7 @@ Shmup.plugin.projectile("laser", {
     }
     projectile.distance = Shmup.math.point.pythagorean(true, projectile.position.start, projectile.position.end, true);
     projectile.anchor.value = data.anchor || 0;
-    var tempDis = Shmup.math.pointBetween(projectile.position.start, projectile.position.end, projectile.anchor.value);
+    var tempDis = Shmup.math.line.between(projectile.position.start, projectile.position.end, projectile.anchor.value);
     projectile.anchor.x = tempDis.x;
     projectile.anchor.y = tempDis.y;
     projectile.update = data.update;
@@ -119,7 +117,7 @@ Shmup.plugin.projectile("laser", {
     Shmup.advanced.process().wait.laser.set(projectile);
   },
   update: function(projectile) {
-    var tempDis = Shmup.math.pointBetween(projectile.position.start, projectile.position.end, projectile.anchor.value);
+    var tempDis = Shmup.math.line.between(projectile.position.start, projectile.position.end, projectile.anchor.value);
     projectile.anchor.x = tempDis.x;
     projectile.anchor.y = tempDis.y;
     tempDis = Shmup.math.point.pythagorean(true, projectile.position.start, projectile.anchor, true);
@@ -152,6 +150,7 @@ Shmup.plugin.projectile("curve", {
     count: 0,
     distance: 0,
     instant: false,
+    same: true,
     temp: {
       node: undefined,
       data: undefined,
@@ -266,7 +265,6 @@ Shmup.plugin.projectile("curve", {
   },
 });
 
-//Do not create this, this one is for use only with curve laser
 Shmup.plugin.projectile("curveNode", {
   data: {
     position: {
