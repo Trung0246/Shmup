@@ -1,7 +1,7 @@
 (function(window) {
   'use strict';
   /*
-  Shmup.js v1.2.1
+  Shmup.js v1.2.2
 
   MIT License
 
@@ -29,8 +29,8 @@
   //Important variable
   var main = {},       //Main holder
       data = {
-        angleType: "degree",
-        positionType: "object",
+        //angleType: "degree",
+        //positionType: "object",
         maxProjectile: 0,
         frame: 0,
         scene: {
@@ -54,43 +54,71 @@
 
   //Define current Shmup.js version string
   Object.defineProperty(main, "VERSION", {
-    value: "1.2.1",
+    value: "1.2.2",
     writable: false,
     enumerable: true,
     configurable: true,
   });
   
   //Private class
-  function taskRunner(param, task, configs) {
+  function Tasker(task, param, configs) {
     this.task = task;
     this.param = param;
     this.configs = configs;
-    if (typeof this.param === "function") {
+    if (!param) {
       this.tempTask = this.task();
     } else {
-      this.tempTask = this.task.apply(this, this.param);
+      this.tempTask = this.task.apply(this, param);
     }
     return this;
   }
-  taskRunner.prototype.reset = function() {
-    this.tempTask = this.task();
-    this.returnData = this.returnData || {};
-    this.returnData.task = this.task;
-    this.returnData.iterate = this.tempTask;
-    this.returnData.value = undefined;
-    this.returnData.done = false;
-    return this.returnData;
-  };
-  taskRunner.prototype.next = function() {
-    this.returnData = this.tempTask.next();
-    this.returnData.task = this.task;
-    this.returnData.iterate = this.tempTask;
-    return this.returnData;
-  };
-  taskRunner.prototype.parameter = function() {
-    if (typeof this.param !== "function") {
-      return this.param;
-    }
+  Tasker.prototype = {
+    reset: function() {
+      this.tempTask = this.task();
+      this.returnData = this.returnData || {};
+      this.returnData.task = this.task;
+      this.returnData.iterate = this.tempTask;
+      this.returnData.value = undefined;
+      this.returnData.done = false;
+      return this.returnData;
+    },
+    next: function() {
+      this.returnData = this.tempTask.next();
+      this.returnData.task = this.task;
+      this.returnData.iterate = this.tempTask;
+      return this.returnData;
+    },
+  }
+  
+  function Gunner(data) {
+    this.angle = data.angle || 0;
+    this.speed = data.speed || 0;
+    this.position = data.position || {x: 0, y: 0};
+    this.projectile = data.projectile || undefined;
+    this.group = [];
+    this._isFiring = false;
+  }
+  Gunner.prototype = {
+    fire: function() {
+      var tempProj = Shmup.projectile[this.projectile.type].add(this.projectile);
+      tempProj.position.x = this.position.x;
+      tempProj.position.y = this.position.y;
+      tempProj.angle = this.angle;
+      tempProj.speed = this.speed;
+      this.group.push(tempProj);
+      return this;
+    },
+    vanish: function(index) {
+      Shmup.projectile[this.projectile.type].remove(this.group[index]);
+      this.group.splice(index, 1);
+      return this;
+    },
+    clear: function() {
+      for (var counting = this.group.length - 1; counting >= 0; --counting) {
+        this.vanish(counting);
+      }
+      return this;
+    },
   };
   
   //Public class
@@ -98,8 +126,8 @@
   main.projectile = {};
 
   main.configs = function(configsData) {
-    data.angleType = configsData.angleType || "degree";
-    data.positionType = configsData.positionType || "object";
+    //data.angleType = configsData.angleType || "degree";
+    //data.positionType = configsData.positionType || "object";
     data.scene = configsData.scene || (function() {
       throw new Error("Unknown scene size");
     })();
@@ -132,8 +160,10 @@
         if (!process.wait[key]) {
           if (typeof data.maxProjectile === "number") {
             process.wait[key] = new Pool(main.projectile[key].data, data.maxProjectile, true);
-          } else {
+          } else if (data.maxProjectile.key) {
             process.wait[key] = new Pool(main.projectile[key].data, data.maxProjectile[key], true);
+          } else {
+            throw new Error("Unknown pool size of " + key);
           }
         }
       }
@@ -168,7 +198,7 @@
 
   //Utilities class
   main.util = {
-    loop: function (condition, actions, isMain, repeatData) {
+    work: function (condition, actions, isMain, repeatData) {
       if (isMain === undefined) {
         return {
           type: "repeat",
@@ -296,24 +326,22 @@
         }
       }
     },
-    task: function (param, task, configs) {
-      if (typeof param === "function") {
-        task = param;
-      } else {
-        param = param || [];
-      }
+    task: function (task, param, configs) {
+      param = param || [];
       configs = configs || {};
       configs.update = configs.update || false;
       configs.reset = configs.reset || false;
       if (!task) {
         throw new Error("No task to run");
       }
-      //var returnData, tempTask;
-      var pushTask = new taskRunner(param, task, configs);
+      var pushTask = new Tasker(task, param, configs);
       if (configs.update === true) {
         temp.task.push(pushTask);
       }
       return pushTask;
+    },
+    gun: function(data) {
+      return new Gunner(data);
     },
     count: function(data) {
       data = data || {};
@@ -338,18 +366,22 @@
           current = data.min;
         }
       }
-      return function() {
-        if (data.change < 0) {
-          if (current <= data.max && data.reset === true) {
-            checkDone();
-          } else if (current > data.max) {
-            current += data.change;
-          }
+      return function(value) {
+        if (value) {
+          current = value;
         } else {
-          if (current >= data.max && data.reset === true) {
-            checkDone();
-          } else if (current < data.max) {
-            current += data.change;
+          if (data.change < 0) {
+            if (current <= data.max && data.reset === true) {
+              checkDone();
+            } else if (current > data.max) {
+              current += data.change;
+            }
+          } else {
+            if (current >= data.max && data.reset === true) {
+              checkDone();
+            } else if (current < data.max) {
+              current += data.change;
+            }
           }
         }
         return current;
@@ -417,11 +449,6 @@
     },
   };
   
-  //Gun class
-  main.gun = {
-    
-  };
-  
   main.advanced = {
     debugMode: function() {
       debugger;
@@ -458,8 +485,456 @@
       phi: (1 + Math.sqrt(5)) / 2,
       silver: 1 + Math.sqrt(2),
     },
+    angle: {
+      radian: {
+        normalize: function(angle) {
+          angle = angle % main.math.constant.tau;
+          while (angle <= -Math.PI) {
+            angle += main.math.constant.tau;
+          }
+          while (Math.PI < angle) {
+            angle -= main.math.constant.tau;
+          }
+          return angle;
+        },
+        degree: function(angle) {
+          angle = angle % (Math.PI * 2);
+          return angle * (180 / Math.PI);
+        },
+        full: function(angle) {
+          return (main.math.constant.tau + (angle % main.math.constant.tau)) % main.math.constant.tau;
+        },
+      },
+      degree: {
+        normalize: function(angle) {
+          angle = angle % 360;
+          while (angle <= 0) {
+            angle += 360;
+          }
+          while (180 < angle) {
+            angle -= 360;
+          }
+          return angle;
+        },
+        radian: function(angle) {
+          angle = angle % 360;
+          return angle * (Math.PI / 180);
+        },
+        full: function(angle) {
+          return (360 + (angle % 360)) % 360;
+        },
+      },
+      aim: function(start, target) {
+        return -Math.atan2(start.x - target.x, -(start.y - target.y));
+      },
+      bounce: function(angle, miror) {
+        return 2 * mirror - angle;
+      },
+      different: function (angleOne, angleTwo) {
+        //http://stackoverflow.com/questions/12234574/
+        return (angleOne - angleTwo + Math.PI + main.math.constant.tau) % main.math.constant.tau - Math.PI;
+      },
+      between: function(angleOne, angleTwo, angle) {
+        //www.xarg.org/2010/06/is-an-angle-between-two-other-angles/
+        angle = main.math.angle.radian.full(angle);
+        angleOne = main.math.angle.radian.full(angleOne);
+        angleTwo = main.math.angle.radian.full(angleTwo);
+        if (angleOne < angleTwo) {
+          return angleOne <= angle && angle <= angleTwo;
+        } else {
+          return angleOne <= angle || angle <= angleTwo;
+        }
+      },
+      on: function(angleOne, angleTwo, location) {
+        return main.math.angle.radian.normalize((main.math.angle.radian.full(angleTwo) - main.math.angle.radian.full(angleOne)) * location + main.math.angle.radian.full(angleOne));
+      },
+    },
+    point: {
+      distance: function(type, locationOne, locationTwo, square) {
+        var result;
+        type = type || false;
+        if (type === true) {
+          result = Math.pow(locationOne.x - locationTwo.x, 2) + Math.pow(locationOne.y - locationTwo.y, 2);
+        } else {
+          result = Math.pow(locationOne, 2) + Math.pow(locationTwo, 2);
+        }
+        if (square === true) {
+          return Math.sqrt(result);
+        } else {
+          return result;
+        }
+      },
+      rotate: function(center, point, angle) {
+        var cos = Math.cos(angle),
+        sin = Math.sin(angle);
+        return {
+          x: (cos * (point.x - center.x)) - (sin * (point.y - center.y)) + center.x,
+          y: (cos * (point.y - center.y)) + (sin * (point.x - center.x)) + center.y,
+        };
+      },
+      dilate: function(posOne, posTwo, location) {
+        //like laser when instant set to false
+        var tempLength = main.math.point.distance(true, posOne, posTwo, true) * location, angle = main.math.angle.aim(posOne, posTwo);
+        return {
+          x: Math.sin(angle) * tempLength + posOne.x,
+          y: Math.cos(angle) * tempLength + posOne.y,
+          distance: tempLength,
+          angle: angle,
+        };
+      },
+      angle: function(head, posOne, posTwo) {
+        return Math.acos((main.math.point.distance(true, head, posOne, false) + main.math.point.distance(true, head, posTwo, false) - main.math.point.distance(true, posOne, posTwo, false)) / (2 * main.math.point.distance(true, head, posOne, true) * main.math.point.distance(true, head, posTwo, true)));
+      },
+      center: function(posOne, posTwo, posThree) {
+        //http://stackoverflow.com/questions/4958161
+        var d2  = posTwo.x * posTwo.x + posTwo.y * posTwo.y;
+        var bc  = (posOne.x * posOne.x + posOne.y * posOne.y - d2) / 2;
+        var cd  = (d2 - posThree.x * posThree.x - posThree.y * posThree.y) / 2;
+        var det = (posOne.x - posTwo.x) * (posTwo.y - posThree.y) - (posTwo.x - posThree.x) * (posOne.y - posTwo.y);
+        if (Math.abs(det) > 1e-10) {
+          return {
+            x: (bc * (posTwo.y - posThree.y) - cd * (posOne.y - posTwo.y)) / det,
+            y: ((posOne.x - posTwo.x) * cd - (posTwo.x - posThree.x) * bc) / det,
+          };
+        }
+      },
+    },
+    line: {
+      slope: function(start, end) {
+        return (end.y - start.y) / (end.x - start.x);
+      },
+      intersect: function(pos1Start, pos1End, pos2Start, pos2End) {
+        //http://jsfiddle.net/justin_c_rounds/Gd2S2/light/
+        //http://stackoverflow.com/questions/39819001/
+        var denominator, a, b, numerator1, numerator2, result = {
+            x: null,
+            y: null,
+            onLine1: false,
+            onLine2: false,
+        };
+        denominator = ((pos2End.y - pos2Start.y) * (pos1End.x - pos1Start.x)) - ((pos2End.x - pos2Start.x) * (pos1End.y - pos1Start.y));
+        if (denominator === 0) {
+          if ((pos1Start.x - pos2Start.x) * (pos1Start.y - pos2End.y) - (pos1Start.x - pos2End.x) * (pos1Start.y - pos2Start.y) === 0 || (pos1End.x - pos2Start.x) * (pos1End.y - pos2End.y) - (pos1End.x - pos2End.x) * (pos1End.y - pos2Start.y) === 0) {
+            result.onLine2 = result.onLine1 = (pos1Start.x <= pos2End.x && pos1End.x >= pos2Start.x && pos1Start.y <= pos2End.y && pos1End.y >= pos2Start.y);
+          }
+          return result;
+        }
+        a = pos1Start.y - pos2Start.y;
+        b = pos1Start.x - pos2Start.x;
+        numerator1 = ((pos2End.x - pos2Start.x) * a) - ((pos2End.y - pos2Start.y) * b);
+        numerator2 = ((pos1End.x - pos1Start.x) * a) - ((pos1End.y - pos1Start.y) * b);
+        a = numerator1 / denominator;
+        b = numerator2 / denominator;
+        result.x = pos1Start.x + (a * (pos1End.x - pos1Start.x));
+        result.y = pos1Start.y + (a * (pos1End.y - pos1Start.y));
+        if (a >= 0 && a <= 1) {
+            result.onLine1 = true;
+        }
+        if (b >= 0 && b <= 1) {
+            result.onLine2 = true;
+        }
+        return result;
+      },
+      distance: function(type, start, end, position, square) {
+        //http://stackoverflow.com/questions/31346862/
+        //http://stackoverflow.com/questions/849211/
+        if (type === true) {
+          var l2 = main.math.point.distance(true, start, end, false);
+          if (l2 == 0) {
+            return main.math.point.distance(true, position, start, false);
+          };
+          var t = ((position.x - start.x) * (end.x - start.x) + (position.y - start.y) * (end.y - start.y)) / l2;
+          t = Math.max(0, Math.min(1, t));
+          return main.math.point.distance(true, position, {
+            x: start.x + t * (end.x - start.x),
+            y: start.y + t * (end.y - start.y)
+          }, square);
+        } else {
+          return Math.abs((end.y - start.y) * position.x - (end.x - start.x) * position.y + end.x * start.y - end.y * start.x) / main.math.point.distance(true, start, end, true);
+        }
+      },
+      on: function(start, end, location) {
+        //http://jsfiddle.net/3SY8v/
+        var xlen = end.x - start.x;
+        var ylen = end.y - start.y;
+        var hlen = main.math.point.distance(false, xlen, ylen, true);
+        var smallerXLen = xlen * location;
+        var smallerYLen = ylen * location;
+        return {
+          x: start.x + smallerXLen,
+          y: start.y + smallerYLen,
+        };
+      },
+      getX: function(posOne, posTwo, yValue) {
+        var a_numerator = posTwo.y - posOne.y;
+        var a_denominator = posTwo.x - posOne.x;
+        if (a_numerator === 0){
+          return posTwo.x;
+        } else {
+          var a = a_numberator / a_denominator;
+          var yDist = yValue - posTwo.y;
+          var xDist = yDist / a;
+          var x3 = posTwo.x + xDist;
+          return x3;
+        }
+      },
+      getY: function(posOne, posTwo, xValue) {
+        var a_numerator = posTwo.y - posOne.y;
+        var a_denominator = posTwo.x - posOne.x;
+        if (a_denominator === 0){
+          return posTwo.y;
+        } else {
+          var a = a_numberator / a_denominator;
+          var xDist = xValue - posTwo.x;
+          var yDist = xDist * a;
+          var y3 = posTwo.y + yDist;
+          return y3;
+        }
+      },
+    },
+    vector: {
+      normalize: function(position) {
+        var length = Math.sqrt(position.x * position.x + position.y * position.y);
+        return {
+          x: position.x / length,
+          y: position.y / length,
+        };
+      },
+      dot: function(posOne, posTwo) {
+        //Heavily related to cosine
+        return posOne.x * posTwo.x + posOne.y * posTwo.y;
+      },
+      cross: function(posOne, posTwo) {
+        //Heavily related to sine
+        return posOne.x * posTwo.y - posOne.y * posTwo.x;
+      },
+      on: function(dataOne, dataTwo, location) {
+        var tempPos;
+        if ((dataOne.angle || dataOne.speed) && !(dataOne.x || dataOne.y)) {
+          dataOne.x = Math.sin(dataOne.angle) * dataOne.speed;
+          dataOne.y = Math.cos(dataOne.angle) * dataOne.speed;
+        }
+        if ((dataTwo.angle || dataTwo.speed) && !(dataTwo.x || dataTwo.x)) {
+          dataTwo.x = Math.sin(dataTwo.angle) * dataTwo.speed;
+          dataTwo.y = Math.cos(dataTwo.angle) * dataTwo.speed;
+        }
+        tempPos = main.math.line.on(dataOne, dataTwo, location || 0.5);
+        return {
+          x: tempPos.x,
+          y: tempPos.y,
+          angle: main.math.angle.aim({x:0,y:0}, tempPos),
+          speed: main.math.point.distance(true, {x:0,y:0}, tempPos, true),
+        };
+      },
+    },
+    trig: {
+      csc: function(value) {
+        return 1 / Math.sin(value);
+      },
+      sec: function(value) {
+        return 1 / Math.cos(value);
+      },
+      cot: function(value) {
+        return 1 / Math.tan(value);
+      },
+    },
+    number: {
+      roundoff: function(number, epsilon) {
+        epsilon = epsilon || 12;
+        return Math.round((number) * Math.pow(10, epsilon)) / Math.pow(10, epsilon);
+      },
+      range: function(value, min, max, minEq, maxEq, accuracy) {
+        if (minEq === true && maxEq === true) {
+          return value >= (min * accuracy) && value <= (max * accuracy);
+        } else if (minEq === true) {
+          return value >= (min * accuracy) && value < (max * accuracy);
+        } else if (maxEq === true) {
+          return value > (min * accuracy) && value <= (max * accuracy);
+        } else {
+          return value > (min * accuracy) && value < (max * accuracy);
+        }
+      },
+      compare: function(valueOne, valueTwo, accuracy, equal, reverse) {
+        if (reverse === true) {
+          if (equal === true) {
+            return valueOne <= (valueTwo * accuracy);
+          } else {
+            return valueOne < (valueTwo * accuracy);
+          }
+        } else {
+          if (equal === true) {
+            return valueOne >= (valueTwo * accuracy);
+          } else {
+            return valueOne > (valueTwo * accuracy);
+          }
+        }
+      },
+      rmod: function(reverse, value, mod) {
+        //http://mathworld.wolfram.com/ModularInverse.html
+        //stackoverflow.com/questions/12218534
+        //(53 + x) % 62 = 44 => (44,53,62)
+        if(value < reverse) {
+          return reverse - value;
+        } else {
+          return mod + reverse - value;
+        }
+      },
+      factorial: function(value) {
+        var result = 1;
+        if (value > 0) {
+          for (var count = 1; count <= value; count ++) {
+            result *= count;
+          }
+        } else if (value < 0) {
+          for (var count = -1; count >= value; count --) {
+            result *= count;
+          }
+        } else {
+          result = 1;
+        }
+        return result;
+      },
+      gamma: function(z, g, C) {
+        g = g || 7;
+        C = C || [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716 * Math.pow(10, -6), 1.5056327351493116 * Math.pow(10, -7)];
+        if (z < 0.5) {
+          return Math.PI / (Math.sin(Math.PI * z) * main.math.number.gamma(1 - z));
+        } else {
+          z -= 1;
+          var x = C[0];
+          for (var i = 1; i < g + 2; i++)
+          x += C[i] / (z + i);
+          var t = z + g + 0.5;
+          return Math.sqrt(2 * Math.PI) * Math.pow(t, (z + 0.5)) * Math.exp(-t) * x;
+        }
+      },
+      pascalTriangle: function(a, b) {
+        var result = 1;
+        for (var i = 1; i <= b; i++) {
+          result *= ((a - (i - 1)) / i);
+        }
+        return result;
+      },
+      random: function(options) {
+        options = options || {};
+        options.generate = options.generate || function(seed) {
+          Math.seedrandom(seed);
+          return Math.random();
+        };
+        options.seed = options.seed || null;
+        options.range = options.range || {min:0, max: 1};
+        options.round = options.round || false;
+        options.exception = options.exception || null;
+        options.error = options.error || {};
+        options.error.larger = options.error.larger || 0;
+        options.error.equal = options.error.equal || options.range.min;
+        options.gaussian = options.gaussian || 1;
+        options.weight = options.weight || null;
+        if (typeof options.generate != "function" && options.generate != null) {
+          return console.error("options.generate is not function");
+        }
+        if (typeof options.seed != "string" && options.seed != null) {
+          return console.error("options.seed is not string");
+        }
+        if (Object.prototype.toString.call(options.range) !== '[object Object]' && options.range != null) {
+          return console.error("options.range is not object");
+        }
+        if (typeof options.round != "boolean" && options.round != null) {
+          return console.error("options.round is not boolean");
+        }
+        if (Object.prototype.toString.call(options.exception) !== '[object Array]' && options.exception != null) {
+          return console.error("options.exception is not array");
+        }
+        if (Object.prototype.toString.call(options.error) === '[object Object]' && options.error != null) {
+          if (typeof options.error.larger != "number" && options.error.larger != null) {
+            return console.error("options.error.larger is not number");
+          }
+          if (typeof options.error.equal != "number" && options.error.equal != null) {
+            return console.error("options.error.equal is not number");
+          }
+        } else if (Object.prototype.toString.call(options.error) !== '[object Object]' && options.error != null) {
+          return console.error("options.error is not object");
+        }
+        if (typeof options.gaussian != "number" && options.gaussian != null) {
+          return console.error("options.gaussian is not number");
+        }
+        if (Object.prototype.toString.call(options.weight) !== '[object Array]' && options.weight != null) {
+          return console.error("options.weight is not array");
+        }
+        function PRNG() {
+          var Value;
+          if (options.round === true) {
+            Value = Number(Math.floor(options.generate(options.seed) * (options.range.max - options.range.min + 1)) + options.range.min);
+          } else if (options.round === false || options.round == null) {
+            Value = Number(options.generate(options.seed) * (options.range.max - options.range.min) + options.range.min);
+          } else {
+            console.error("What happened with options.round in Math.random.advanced ?");
+          }
+          if (options.range.min > options.range.max) {
+            if (options.larger == null) {
+              Value = 0;
+            } else {
+              Value = options.larger;
+            }
+            return Value;
+          } else if (options.range.min == options.range.max) {
+            if (options.equal == null) {
+              Value = options.range.min;
+            } else {
+              Value = options.equal;
+            }
+            return Value;
+          } else if (options.range.min < options.range.max) {
+            return options.seed != null ? Value : ((options.exception == [] || options.exception == null) ? Value : (options.exception.indexOf(Value) == -1) ? Value : (options.gaussian != null && (options.Other === false && options.Other != null) ? Value : PRNG()));
+          }
+        }
+        function GauRan() {
+          if (options.gaussian == null || (typeof options.gaussian == "number" && options.gaussian <= 1)) {
+            return PRNG();
+          } else if (options.gaussian > 1 && options.gaussian != null) {
+            var Total = 0,
+              Times = 0;
+            while (Times < options.gaussian) {
+              Times++;
+              Total += PRNG();
+            }
+            Total /= options.gaussian;
+            if (options.round == true) {
+              Total = Math.round(Total, 0);
+            }
+            return options.seed != null ? console.error("Please remove parameter options.gaussian because options.seed is defined.") : ((options.exception == [] || options.exception == null) ? Total : (options.exception.indexOf(Total) == -1) ? Total : GauRan());
+          }
+        }
+        var TempResult = GauRan(),
+          count = 0,
+          TempStore = "",
+          TempHighest = options.range.max,
+          Temperror = false;
+        if (options.weight == null) {
+          return TempResult;
+        } else if (options.weight != null) {
+          while (count < options.weight.length) {
+            if (count == options.weight.length - 1) {
+              TempStore += "options.weight[" + String(count) + "].value";
+            } else {
+              if (options.weight[count].chance > TempHighest) {
+                Temperror = true;
+                break;
+              }
+              TempStore += "TempResult" + options.round === true ? ">=" : ">" + "options.weight[" + String(count) + "].chance?options.weight[" + String(count) + "].value:";
+              TempHighest = options.weight[count].chance;
+            }
+            count++;
+          }
+          if (Temperror === true) {
+            return console.error("options.weight[" + String(count) + "].chance is larger than options.weight[" + String(Number(count - 1)) + "].chance");
+          }
+          return eval(TempStore);
+        }
+      },
+    },
     shape: {
-      oval: function(position, data, angle) {
+      ellipse: function(position, data, angle) {
         position = position || {};
         position.x = position.x || 0;
         position.y = position.y || 0;
@@ -472,7 +947,7 @@
         var tempPos = {};
         tempPos.x = position.x + data.width * Math.cos(angle.value) * Math.cos(angle.rotate) - data.height * Math.sin(angle.value) * Math.sin(angle.rotate);
         tempPos.y = position.y + data.height * Math.sin(angle.value) * Math.cos(angle.rotate) + data.width * Math.cos(angle.value) * Math.sin(angle.rotate);
-        //Or just from 2 point in oval then,... idk, watch that gif below
+        //Or just from 2 point in ellipse then,... idk, watch that gif below
         //http://giphy.com/gifs/educational-ellipse-Qk5fIr8LRYACI
         /*
         From danmakufu:
@@ -487,7 +962,7 @@
           x: tempPos.x,
           y: tempPos.y,
           angle: main.math.angle.aim(position, tempPos),
-          speed: main.math.point.pythagorean(true, position, tempPos, true),
+          speed: main.math.point.distance(true, position, tempPos, true),
         };
       },
       rectangle: function(position, data, angle) {
@@ -501,8 +976,8 @@
         angle.value = angle.value || 0;
         angle.rotate = angle.rotate || 0;
         var corner = {};
-        var tempTest = main.math.point.pythagorean(false, data.width, data.height, true) / 2;
-        angle.rotate = main.math.angle.radian.normalize(main.math.angle.radian.to.full(angle.rotate));
+        var tempTest = main.math.point.distance(false, data.width, data.height, true) / 2;
+        angle.rotate = main.math.angle.radian.normalize(main.math.angle.radian.full(angle.rotate));
         corner.topRight = {
           x: position.x + Math.cos(Math.atan2(-data.width, data.height) + angle.rotate) * tempTest,
           y: position.y + Math.sin(Math.atan2(-data.width, data.height) + angle.rotate) * tempTest,
@@ -524,13 +999,13 @@
           x: position.x + Math.sin(normalized),
           y: position.y + Math.cos(normalized),
         };
-        normalized = main.math.angle.radian.to.full(normalized);
+        normalized = main.math.angle.radian.full(normalized);
         var result;
         var tempAim = {
-          bottomLeft: main.math.angle.radian.to.full(main.math.angle.aim(position, corner.bottomLeft)),
-          bottomRight: main.math.angle.radian.to.full(main.math.angle.aim(position, corner.bottomRight)),
-          topRight: main.math.angle.radian.to.full(main.math.angle.aim(position, corner.topRight)),
-          topLeft: main.math.angle.radian.to.full(main.math.angle.aim(position, corner.topLeft)),
+          bottomLeft: main.math.angle.radian.full(main.math.angle.aim(position, corner.bottomLeft)),
+          bottomRight: main.math.angle.radian.full(main.math.angle.aim(position, corner.bottomRight)),
+          topRight: main.math.angle.radian.full(main.math.angle.aim(position, corner.topRight)),
+          topLeft: main.math.angle.radian.full(main.math.angle.aim(position, corner.topLeft)),
         };
         var tempResult = {
           bottom: main.math.line.intersect(corner.bottomLeft, corner.bottomRight, position, tempPos),
@@ -571,7 +1046,7 @@
         }
         return {
           angle: main.math.angle.aim(position, result),
-          speed: main.math.point.pythagorean(true, position, result, true),
+          speed: main.math.point.distance(true, position, result, true),
           data: result,
           other: tempResult,
         };
@@ -585,8 +1060,8 @@
         }
         angle = angle || 0;
         vertex.sort(function (a, b) {
-          var tempA = main.math.angle.radian.to.full(a.angle),
-          tempB = main.math.angle.radian.to.full(b.angle);
+          var tempA = main.math.angle.radian.full(a.angle),
+          tempB = main.math.angle.radian.full(b.angle);
           if (tempA < tempB) {
             return -1;
           }
@@ -608,7 +1083,7 @@
             x: position.x + vertex[vertexCount].radius * Math.sin(vertex[vertexCount].angle),
             y: position.y + vertex[vertexCount].radius * Math.cos(vertex[vertexCount].angle),
           };
-          if (!result && main.math.angle.on(main.math.angle.aim(position, vertex[vertexCount - 1]), main.math.angle.aim(position, vertex[vertexCount]), angle)) {
+          if (!result && main.math.angle.between(main.math.angle.aim(position, vertex[vertexCount - 1]), main.math.angle.aim(position, vertex[vertexCount]), angle)) {
             result = main.math.line.intersect(position, {
               x: position.x + 2 * Math.sin(angle),
               y: position.y + 2 * Math.cos(angle),
@@ -619,16 +1094,16 @@
               y: position.y + 2 * Math.cos(angle),
             }, vertex[vertexCount], vertex[0]);
           }
-          if (result && keep) {
+          if (result && !keep) {
             break;
           }
         }
         result.vertex = vertex;
         result.angle = main.math.angle.aim(position, result);
-        result.speed = main.math.point.pythagorean(true, position, result, true);
+        result.speed = main.math.point.distance(true, position, result, true);
         return result;
       },
-      convex: function(position, data, angle) {
+      convex: function(position, data, angle, keep) {
         position = position || {};
         position.x = position.x || 0;
         position.y = position.y || 0;
@@ -641,7 +1116,7 @@
         angle = angle || {};
         angle.value = angle.value || 0;
         angle.rotate = angle.rotate || 0;
-        var vertex = [], tempRotate = main.math.constant.tau / data.vertex, normalized = main.math.number.roundoff(main.math.angle.radian.to.full(main.math.angle.radian.normalize(angle.value))), result;
+        var vertex = [], tempRotate = main.math.constant.tau / data.vertex, normalized = main.math.number.roundoff(main.math.angle.radian.full(main.math.angle.radian.normalize(angle.value))), result;
         vertex.push({
           x: position.x + data.radius * Math.sin(tempRotate + angle.rotate),
           y: position.y + data.radius * Math.cos(tempRotate + angle.rotate),
@@ -651,7 +1126,7 @@
             x: position.x + data.radius * Math.sin(tempRotate * (vertexCount + 1) + angle.rotate),
             y: position.y + data.radius * Math.cos(tempRotate * (vertexCount + 1) + angle.rotate),
           });
-          if (!result && main.math.angle.on(main.math.angle.aim(position, vertex[vertexCount - 1]), main.math.angle.aim(position, vertex[vertexCount]), normalized)) {
+          if (!result && main.math.angle.between(main.math.angle.aim(position, vertex[vertexCount - 1]), main.math.angle.aim(position, vertex[vertexCount]), normalized)) {
             result = main.math.line.intersect(position, {
               x: position.x + data.radius * Math.sin(angle.value),
               y: position.y + data.radius * Math.cos(angle.value),
@@ -662,88 +1137,71 @@
               y: position.y + data.radius * Math.cos(angle.value),
             }, vertex[vertexCount], vertex[0]);
           }
-          if (result && !data.keep) {
+          if (result && !keep) {
             break;
           }
         }
         result.vertex = vertex;
         result.angle = main.math.angle.aim(position, result);
-        result.speed = main.math.point.pythagorean(true, position, result, true);
+        result.speed = main.math.point.distance(true, position, result, true);
         return result;
       },
-      star: function(position, data, angle) {
-        
-      },
-    },
-    point: {
-      pythagorean: function(type, locationOne, locationTwo, square) {
-        var result;
-        type = type || false;
-        square = square || true;
-        if (type === true) {
-          result = Math.pow(locationOne.x - locationTwo.x, 2) + Math.pow(locationOne.y - locationTwo.y, 2);
-        } else {
-          result = Math.pow(locationOne, 2) + Math.pow(locationTwo, 2);
+      star: function(position, data, angle, keep) {
+        position = position || {};
+        position.x = position.x || 0;
+        position.y = position.y || 0;
+        data = data || [];
+        data.count = data.count || 1;
+        data.vertex = data.vertex || [];
+        angle = angle || {};
+        angle.value = angle.value || 0;
+        angle.rotate = angle.rotate || 0;
+        var totalVertex = 0;
+        for (var vertexCount = 0; vertexCount < data.vertex.length; vertexCount ++) {
+          totalVertex += data.vertex[vertexCount].count;
         }
-        if (square === true) {
-          return Math.sqrt(result);
-        } else {
-          return result;
+        totalVertex *= data.count;
+        if (totalVertex < 3) {
+          throw new Error("Vertex must not smaller than 3");
         }
-      },
-      rotate: function(center, point, angle) {
-        var cos = Math.cos(angle),
-        sin = Math.sin(angle);
-        return {
-          x: (cos * (point.x - center.x)) - (sin * (point.y - center.y)) + center.x,
-          y: (cos * (point.y - center.y)) + (sin * (point.x - center.x)) + center.y,
-        };
-      },
-    },
-    line: {
-      intersect: function (pos1Start, pos1End, pos2Start, pos2End) {
-        //http://jsfiddle.net/justin_c_rounds/Gd2S2/light/
-        var denominator, a, b, numerator1, numerator2, result = {
-            x: null,
-            y: null,
-            onLine1: false,
-            onLine2: false
-        };
-        denominator = ((pos2End.y - pos2Start.y) * (pos1End.x - pos1Start.x)) - ((pos2End.x - pos2Start.x) * (pos1End.y - pos1Start.y));
-        if (denominator == 0) {
-            return result;
-        }
-        a = pos1Start.y - pos2Start.y;
-        b = pos1Start.x - pos2Start.x;
-        numerator1 = ((pos2End.x - pos2Start.x) * a) - ((pos2End.y - pos2Start.y) * b);
-        numerator2 = ((pos1End.x - pos1Start.x) * a) - ((pos1End.y - pos1Start.y) * b);
-        a = numerator1 / denominator;
-        b = numerator2 / denominator
-        result.x = pos1Start.x + (a * (pos1End.x - pos1Start.x));
-        result.y = pos1Start.y + (a * (pos1End.y - pos1Start.y));
-        if (a > 0 && a < 1) {
-            result.onLine1 = true;
-        }
-        if (b > 0 && b < 1) {
-            result.onLine2 = true;
-        }
+        var vertex = [], tempRotate = main.math.constant.tau / totalVertex, result;
+        vertex.push({
+          x: position.x + data.vertex[0].radius * Math.sin(tempRotate + angle.rotate),
+          y: position.y + data.vertex[0].radius * Math.cos(tempRotate + angle.rotate),
+        });
+        var vertexCountSame = 1, vertexCountTotal = 2;
+        (function() {
+          for (var countCount = 0; countCount < data.count; countCount ++) {
+            for (var vertexCount = 0; vertexCount < data.vertex.length; vertexCount ++) {
+              for (; vertexCountSame < data.vertex[vertexCount].count; vertexCountSame ++) {
+                vertex.push({
+                  x: position.x + data.vertex[vertexCount].radius * Math.sin(tempRotate * vertexCountTotal + angle.rotate),
+                  y: position.y + data.vertex[vertexCount].radius * Math.cos(tempRotate * vertexCountTotal + angle.rotate),
+                });
+                if (!result && main.math.angle.between(main.math.angle.aim(position, vertex[vertex.length - 2]), main.math.angle.aim(position, vertex[vertex.length - 1]), angle.value)) {
+                  result = main.math.line.intersect(position, {
+                    x: position.x + 2 * Math.sin(angle.value),
+                    y: position.y + 2 * Math.cos(angle.value),
+                  }, vertex[vertex.length - 2], vertex[vertex.length - 1]);
+                } else if (vertex.length >= totalVertex) {
+                  result = main.math.line.intersect(position, {
+                    x: position.x + 2 * Math.sin(angle.value),
+                    y: position.y + 2 * Math.cos(angle.value),
+                  }, vertex[vertex.length - 1], vertex[0]);
+                }
+                if (result && !keep) {
+                  return;
+                }
+                vertexCountTotal ++;
+              }
+              vertexCountSame = 0;
+            }
+          }
+        })();
+        result.vertex = vertex;
+        result.angle = main.math.angle.aim(position, result);
+        result.speed = main.math.point.distance(true, position, result, true);
         return result;
-      },
-      distance: function(start, end, position) {
-        //http://stackoverflow.com/questions/31346862/
-        return Math.abs((end.y - start.y) * position.x - (end.x - start.x) * position.y + end.x * start.y - end.y * start.x) / Shmup.math.point.pythagorean(true, start, end, true);
-      },
-      between: function(start, end, location) {
-        //http://jsfiddle.net/3SY8v/
-        var xlen = end.x - start.x;
-        var ylen = end.y - start.y;
-        var hlen = main.math.point.pythagorean(false, xlen, ylen, true);
-        var smallerXLen = xlen * location;
-        var smallerYLen = ylen * location;
-        return {
-          x: start.x + smallerXLen,
-          y: start.y + smallerYLen,
-        };
       },
     },
     interpolation: {
@@ -780,16 +1238,9 @@
           }
           break;
           default: {
-            var pascalTriangle = function(a, b) {
-              var result = 1; 
-              for(var i = 1; i <= b; i++){
-                result *= ((a - (i - 1)) / i);
-              }
-              return result;
-            }
             var result = 0;
             for (var n = 0; n <= order - 1; n++) {
-              result += (pascalTriangle(-order, n) * pascalTriangle(2 * order - 1, order - n - 1) * Math.pow(time, order + n));
+              result += (main.math.number.pascalTriangle(-order, n) * main.math.number.pascalTriangle(2 * order - 1, order - n - 1) * Math.pow(time, order + n));
             }
             return main.math.interpolation.linear(start, end, result);
           }
@@ -808,44 +1259,10 @@
         return start + time * (end-start) * (1 + Math.sin(time * 180) * magnitude);
       },
     },
-    vector: {
-      normalize: function(position) {
-        var length = Math.sqrt(position.x * position.x + position.y * position.y);
-        return {
-          x: position.x / length,
-          y: position.y / length,
-        };
-      },
-      dot: function(posOne, posTwo) {
-        //Heavily related to cosine
-        return posOne.x * posTwo.x + posOne.y * posTwo.y;
-      },
-      cross: function(posOne, posTwo) {
-        //Heavily related to sine
-        return posOne.x * posTwo.y - posOne.y * posTwo.x;
-      },
-      between: function(dataOne, dataTwo, location) {
-        var tempPos;
-        if ((dataOne.angle || dataOne.speed) && !(dataOne.x || dataOne.y)) {
-          dataOne.x = Math.sin(dataOne.angle) * dataOne.speed;
-          dataOne.y = Math.cos(dataOne.angle) * dataOne.speed;
-        }
-        if ((dataTwo.angle || dataTwo.speed) && !(dataTwo.x || dataTwo.x)) {
-          dataTwo.x = Math.sin(dataTwo.angle) * dataTwo.speed;
-          dataTwo.y = Math.cos(dataTwo.angle) * dataTwo.speed;
-        }
-        tempPos = main.math.line.between(dataOne, dataTwo, location || 0.5);
-        return {
-          x: tempPos.x,
-          y: tempPos.y,
-          angle: main.math.angle.aim({x:0,y:0}, tempPos),
-          speed: main.math.point.pythagorean(true, {x:0,y:0}, tempPos, true),
-        };
-      },
-    },
-    equation: {
+    curve: {
+      //https://www.math10.com/en/geometry/analytic-geometry/geometry5/special-plane-curves.html
       lissajous: function(dataX, dataY, theta, time) {
-        //rose, maurer, astroid
+        //maurer, astroid
         dataX = dataX || {};
         dataX.position = dataX.position || 0;
         dataX.length = dataX.length || 1;
@@ -1006,236 +1423,6 @@
         }
       },
     },
-    angle: {
-      radian: {
-        normalize: function(angle) {
-          angle = angle % main.math.constant.tau;
-          while (angle <= -Math.PI) {
-            angle += main.math.constant.tau;
-          }
-          while (Math.PI < angle) {
-            angle -= main.math.constant.tau;
-          }
-          return angle;
-        },
-        to: {
-          degree: function(angle) {
-            angle = angle % (Math.PI * 2);
-            return angle * (180 / Math.PI);
-          },
-          full: function(angle) {
-            return (main.math.constant.tau + (angle % main.math.constant.tau)) % main.math.constant.tau;
-          },
-        },
-      },
-      degree: {
-        normalize: function(angle) {
-          angle = angle % 360;
-          while (angle <= 0) {
-            angle += 360;
-          }
-          while (180 < angle) {
-            angle -= 360;
-          }
-          return angle;
-        },
-        to: {
-          radian: function(angle) {
-            angle = angle % 360;
-            return angle * (Math.PI / 180);
-          },
-          full: function(angle) {
-            return (360 + (angle % 360)) % 360;
-          },
-        },
-      },
-      aim: function(start, target) {
-        return -Math.atan2(start.x - target.x, -(start.y - target.y));
-      },
-      bounce: function(angle, angleBounce) {
-        angle += angleBounce;
-        angle = main.math.angle.radian.normalize(angle);
-        angle *= -1;
-        return angle;
-      },
-      different: function (angleOne, angleTwo) {
-        //http://stackoverflow.com/questions/12234574/
-        return (angleOne - angleTwo + Math.PI + main.math.constant.tau) % main.math.constant.tau - Math.PI;
-      },
-      on: function(angleOne, angleTwo, angle) {
-        //www.xarg.org/2010/06/is-an-angle-between-two-other-angles/
-        angle = main.math.angle.radian.to.full(angle);
-        angleOne = main.math.angle.radian.to.full(angleOne);
-        angleTwo = main.math.angle.radian.to.full(angleTwo);
-        if (angleOne < angleTwo) {
-          return angleOne <= angle && angle <= angleTwo;
-        } else {
-          return angleOne <= angle || angle <= angleTwo;
-        }
-      },
-    },
-    number: {
-      roundoff: function(number, accuracy) {
-        accuracy = accuracy || 12;
-        return Math.round((number) * Math.pow(10, accuracy)) / Math.pow(10, accuracy);
-      },
-      range: function(compare, min, max, minEq, maxEq) {
-        if (minEq === true && maxEq === true) {
-          if (compare >= min && compare <= max) {
-            return true;
-          } else {
-            return false;
-          }
-        } else if (minEq === true) {
-          if (compare >= min && compare < max) {
-            return true;
-          } else {
-            return false;
-          }
-        } else if (maxEq === true) {
-          if (compare > min && compare <= max) {
-            return true;
-          } else {
-            return false;
-          }
-        } else {
-          if (compare > min && compare < max) {
-            return true;
-          } else {
-            return false;
-          }
-        }
-      },
-      rmod: function(reverse, value, mod) {
-        //http://mathworld.wolfram.com/ModularInverse.html
-        //stackoverflow.com/questions/12218534
-        //(53 + x) % 62 = 44 => (44,53,62)
-        if(value < reverse) {
-          return reverse - value;
-        } else {
-          return mod + reverse - value;
-        }
-      },
-      random: function(options) {
-        options = options || {};
-        options.generate = options.generate || function(seed) {
-          Math.seedrandom(seed);
-          return Math.random();
-        };
-        options.seed = options.seed || null;
-        options.range = options.range || {min:0, max: 1};
-        options.round = options.round || false;
-        options.exception = options.exception || null;
-        options.error = options.error || {};
-        options.error.larger = options.error.larger || 0;
-        options.error.equal = options.error.equal || options.range.min;
-        options.gaussian = options.gaussian || 1;
-        options.weight = options.weight || null;
-        if (typeof options.generate != "function" && options.generate != null) {
-          return console.error("options.generate is not function");
-        }
-        if (typeof options.seed != "string" && options.seed != null) {
-          return console.error("options.seed is not string");
-        }
-        if (Object.prototype.toString.call(options.range) !== '[object Object]' && options.range != null) {
-          return console.error("options.range is not object");
-        }
-        if (typeof options.round != "boolean" && options.round != null) {
-          return console.error("options.round is not boolean");
-        }
-        if (Object.prototype.toString.call(options.exception) !== '[object Array]' && options.exception != null) {
-          return console.error("options.exception is not array");
-        }
-        if (Object.prototype.toString.call(options.error) === '[object Object]' && options.error != null) {
-          if (typeof options.error.larger != "number" && options.error.larger != null) {
-            return console.error("options.error.larger is not number");
-          }
-          if (typeof options.error.equal != "number" && options.error.equal != null) {
-            return console.error("options.error.equal is not number");
-          }
-        } else if (Object.prototype.toString.call(options.error) !== '[object Object]' && options.error != null) {
-          return console.error("options.error is not object");
-        }
-        if (typeof options.gaussian != "number" && options.gaussian != null) {
-          return console.error("options.gaussian is not number");
-        }
-        if (Object.prototype.toString.call(options.weight) !== '[object Array]' && options.weight != null) {
-          return console.error("options.weight is not array");
-        }
-
-        function PRNG() {
-          var Value;
-          if (options.round === true) {
-            Value = Number(Math.floor(options.generate(options.seed) * (options.range.max - options.range.min + 1)) + options.range.min);
-          } else if (options.round === false || options.round == null) {
-            Value = Number(options.generate(options.seed) * (options.range.max - options.range.min) + options.range.min);
-          } else {
-            console.error("What happened with options.round in Math.random.advanced ?");
-          }
-          if (options.range.min > options.range.max) {
-            if (options.larger == null) {
-              Value = 0;
-            } else {
-              Value = options.larger;
-            }
-            return Value;
-          } else if (options.range.min == options.range.max) {
-            if (options.equal == null) {
-              Value = options.range.min;
-            } else {
-              Value = options.equal;
-            }
-            return Value;
-          } else if (options.range.min < options.range.max) {
-            return options.seed != null ? Value : ((options.exception == [] || options.exception == null) ? Value : (options.exception.indexOf(Value) == -1) ? Value : (options.gaussian != null && (options.Other === false && options.Other != null) ? Value : PRNG()));
-          }
-        }
-
-        function GauRan() {
-          if (options.gaussian == null || (typeof options.gaussian == "number" && options.gaussian <= 1)) {
-            return PRNG();
-          } else if (options.gaussian > 1 && options.gaussian != null) {
-            var Total = 0,
-              Times = 0;
-            while (Times < options.gaussian) {
-              Times++;
-              Total += PRNG();
-            }
-            Total /= options.gaussian;
-            if (options.round == true) {
-              Total = Math.round(Total, 0);
-            }
-            return options.seed != null ? console.error("Please remove parameter options.gaussian because options.seed is defined.") : ((options.exception == [] || options.exception == null) ? Total : (options.exception.indexOf(Total) == -1) ? Total : GauRan());
-          }
-        }
-        var TempResult = GauRan(),
-          count = 0,
-          TempStore = "",
-          TempHighest = options.range.max,
-          Temperror = false;
-        if (options.weight == null) {
-          return TempResult;
-        } else if (options.weight != null) {
-          while (count < options.weight.length) {
-            if (count == options.weight.length - 1) {
-              TempStore += "options.weight[" + String(count) + "].value";
-            } else {
-              if (options.weight[count].chance > TempHighest) {
-                Temperror = true;
-                break;
-              }
-              TempStore += "TempResult" + options.round === true ? ">=" : ">" + "options.weight[" + String(count) + "].chance?options.weight[" + String(count) + "].value:";
-              TempHighest = options.weight[count].chance;
-            }
-            count++;
-          }
-          if (Temperror === true) {
-            return console.error("options.weight[" + String(count) + "].chance is larger than options.weight[" + String(Number(count - 1)) + "].chance");
-          }
-          return eval(TempStore);
-        }
-      },
-    },
   };
 
   //Do not touch these code
@@ -1254,6 +1441,52 @@
 }(('undefined' !== typeof window) ? window : {}));
 
 //Necessary library
+
+(function() {
+  var getTime;
+  (function() {
+    if (window.performance && (window.performance.now || window.performance.webkitNow)) {
+      var perfNow = window.performance.now ? 'now' : 'webkitNow';
+      getTime = window.performance[perfNow].bind(window.performance);
+    } else {
+      getTime = function() {
+        return +new Date();
+      };
+    }
+  }());
+  var fps = 0, ms = 0, configs = {
+    smoothing: 10,
+    maxMs: 0,
+  };
+  var time,
+      thisFrameTime = 0,
+      lastLoop = getTime() - configs.maxMs,
+      frameTime = configs.maxMs, //maximum ms
+      frameStart = 0; //smooth value
+  Shmup.advanced.performance = {};
+  Shmup.advanced.performance.configs = function(data) {
+    configs.smoothing = data.smoothing || 1;
+    configs.maxMs = data.maxMs;
+    lastLoop = getTime() - configs.maxMs;
+  };
+  Shmup.advanced.performance.start = function() {
+    frameStart = getTime();
+  };
+  Shmup.advanced.performance.end = function() {
+    time = getTime();
+    thisFrameTime = time - lastLoop;
+    frameTime += (thisFrameTime - frameTime) / configs.smoothing;
+    fps = 1000 / frameTime;
+    ms = frameStart < lastLoop ? frameTime : time - frameStart;
+    lastLoop = time;
+  };
+  Shmup.advanced.performance.fps = function() {
+    return fps;
+  };
+  Shmup.advanced.performance.ms = function() {
+    return ms;
+  };
+})();
 
 (function(){
   function Pool(object, size, isChange) {
@@ -1544,3 +1777,11 @@
   [],     // pool: entropy pool starts empty
   Math    // math: package containing random, pow, and seedrandom
 );
+
+/*
+function AngularDistance(angle1, angle2){
+  let distance = NormalizeAngle(angle2 - angle1);
+  if(distance>180){ distance-=360; }
+  return distance;
+}
+*/
