@@ -1,7 +1,7 @@
 # Shmup
 A library for bullet hell in Javascript
 
-Development version: **1.2.1**
+Development version: **1.2.2**
 
 This is the development branch, [please go to stable branch for stable version](https://github.com/Trung0246/Shmup/tree/stable-1.1.4).
 
@@ -21,7 +21,6 @@ http://www.geocities.co.jp/SiliconValley-Oakland/9951/pre/th_dnh_ph3.html
 * ...
 
 ## Changelog:
-* Rewrote WHOLE F\*CKING library
-* Added heck lots of mathematics tools
-* Added three basic projectile plugins
-* Performance increase and better than 1.1.4
+* Added some new math tools
+* Support both custom generator and plain generator
+* Added performance calculator
