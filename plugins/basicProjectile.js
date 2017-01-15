@@ -7,7 +7,7 @@ Shmup.plugin.projectile("bullet", {
     angle: 0,
     speed: 0,
   },
-  create: function(data) {
+  add: function(data) {
     var projectile = Shmup.advanced.process().wait.bullet.get();
     if (data.data) {
       projectile.data = data.data;
@@ -18,12 +18,12 @@ Shmup.plugin.projectile("bullet", {
     projectile.speed = data.speed || 0;
     projectile.update = data.update;
     if (data.process) {
-      projectile.process.actions = Shmup.util.loop(data.process.condition, data.process.actions, false, projectile);
+      projectile.process.actions = Shmup.util.work(data.process.condition, data.process.actions, false, projectile);
     }
     Shmup.advanced.process().active.push(projectile);
     return projectile;
   },
-  vanish: function(projectile) {
+  remove: function(projectile) {
     projectile.position.x = 0;
     projectile.position.y = 0;
     projectile.angle = 0;
@@ -66,7 +66,7 @@ Shmup.plugin.projectile("laser", {
       distance: 0,
     },
   },
-  create: function(data) {
+  add: function(data) {
     var projectile = Shmup.advanced.process().wait.laser.get();
     if (data.data) {
       projectile.data = data.data;
@@ -85,19 +85,19 @@ Shmup.plugin.projectile("laser", {
       projectile.position.end.x = data.position.end.x || projectile.position.start.x;
       projectile.position.end.y = data.position.end.y || projectile.position.start.y;
     }
-    projectile.distance = Shmup.math.point.pythagorean(true, projectile.position.start, projectile.position.end, true);
+    projectile.distance = Shmup.math.point.distance(true, projectile.position.start, projectile.position.end, true);
     projectile.anchor.value = data.anchor || 0;
-    var tempDis = Shmup.math.line.between(projectile.position.start, projectile.position.end, projectile.anchor.value);
+    var tempDis = Shmup.math.line.on(projectile.position.start, projectile.position.end, projectile.anchor.value);
     projectile.anchor.x = tempDis.x;
     projectile.anchor.y = tempDis.y;
     projectile.update = data.update;
     if (data.process) {
-      projectile.process.actions = Shmup.util.loop(data.process.condition, data.process.actions, false, projectile);
+      projectile.process.actions = Shmup.util.work(data.process.condition, data.process.actions, false, projectile);
     }
     Shmup.advanced.process().active.push(projectile);
     return projectile;
   },
-  vanish: function(projectile) {
+  remove: function(projectile) {
     projectile.position.start.x = 0;
     projectile.position.start.y = 0;
     projectile.position.end.x = 0;
@@ -117,14 +117,14 @@ Shmup.plugin.projectile("laser", {
     Shmup.advanced.process().wait.laser.set(projectile);
   },
   update: function(projectile) {
-    var tempDis = Shmup.math.line.between(projectile.position.start, projectile.position.end, projectile.anchor.value);
+    var tempDis = Shmup.math.line.on(projectile.position.start, projectile.position.end, projectile.anchor.value);
     projectile.anchor.x = tempDis.x;
     projectile.anchor.y = tempDis.y;
-    tempDis = Shmup.math.point.pythagorean(true, projectile.position.start, projectile.anchor, true);
+    tempDis = Shmup.math.point.distance(true, projectile.position.start, projectile.anchor, true);
     projectile.position.start.x = projectile.anchor.x + tempDis * Math.sin(projectile.angle);
     projectile.position.start.y = projectile.anchor.y + tempDis * Math.cos(projectile.angle);
     if (projectile.distance >= projectile.temp.distance) {
-      tempDis = Shmup.math.point.pythagorean(true, projectile.position.end, projectile.anchor, true);
+      tempDis = Shmup.math.point.distance(true, projectile.position.end, projectile.anchor, true);
       projectile.position.end.x = projectile.anchor.x + tempDis * Math.sin(projectile.angle - Math.PI);
       projectile.position.end.y = projectile.anchor.y + tempDis * Math.cos(projectile.angle - Math.PI);
     }
@@ -134,7 +134,7 @@ Shmup.plugin.projectile("laser", {
       projectile.position.end.x = projectile.position.end.x + projectile.speed * Math.sin(projectile.angle);
       projectile.position.end.y = projectile.position.end.y + projectile.speed * Math.cos(projectile.angle);
     }
-    projectile.distance = Shmup.math.point.pythagorean(true, projectile.position.start, projectile.position.end, true);
+    projectile.distance = Shmup.math.point.distance(true, projectile.position.start, projectile.position.end, true);
   },
 });
 
@@ -162,7 +162,7 @@ Shmup.plugin.projectile("curve", {
       },
     },
   },
-  create: function(data) {
+  add: function(data) {
     var projectile = Shmup.advanced.process().wait.curve.get();
     if (data.data) {
       projectile.data = data.data;
@@ -179,7 +179,7 @@ Shmup.plugin.projectile("curve", {
     projectile.temp.data = projectile.temp.data || [];
     projectile.instant = data.instant || false;
     for (var nodeCount = 0; nodeCount < projectile.count; nodeCount ++) {
-      var tempNode = Shmup.projectile.curveNode.create({
+      var tempNode = Shmup.projectile.curveNode.add({
         position: {
           x: projectile.position.x,
           y: projectile.position.y,
@@ -199,12 +199,12 @@ Shmup.plugin.projectile("curve", {
     projectile.distance = projectile.temp.node.length * projectile.temp.distance;
     projectile.update = data.update;
     if (data.process) {
-      projectile.process.actions = Shmup.util.loop(data.process.condition, data.process.actions, false, projectile);
+      projectile.process.actions = Shmup.util.work(data.process.condition, data.process.actions, false, projectile);
     }
     Shmup.advanced.process().active.push(projectile);
     return projectile;
   },
-  vanish: function(projectile) {
+  remove: function(projectile) {
     projectile.position.x = 0;
     projectile.position.y = 0;
     projectile.angle = 0;
@@ -213,7 +213,7 @@ Shmup.plugin.projectile("curve", {
     projectile.distance = 0;
     projectile.instant = false;
     for (var nodeCount = projectile.temp.node.length - 1; nodeCount >= 0; --nodeCount) {
-      Shmup.projectile.curveNode.vanish(projectile.temp.node[nodeCount]);
+      Shmup.projectile.curveNode.remove(projectile.temp.node[nodeCount]);
       projectile.temp.node.splice(nodeCount, 1);
     }
     for (var dataCount = projectile.temp.data.length - 1; dataCount >= 0; --dataCount) {
@@ -242,15 +242,20 @@ Shmup.plugin.projectile("curve", {
     for (var tempCount = 0; tempCount < projectile.temp.node.length; tempCount ++) {
       for (var dataCount = 0; dataCount < projectile.temp.data.length; dataCount ++) {
         if (projectile.temp.data[dataCount].count === tempCount) {
-          projectile.temp.node[tempCount].angle = projectile.temp.data[dataCount].angle;
-          projectile.temp.node[tempCount].speed = projectile.temp.data[dataCount].speed;
+          if (projectile.temp.data[dataCount].x === projectile.temp.node[tempCount].x && projectile.temp.data[dataCount].y === projectile.temp.node[tempCount].y && projectile.same === true) {
+            projectile.temp.node[tempCount].angle = projectile.temp.data[dataCount].angle;
+            projectile.temp.node[tempCount].speed = projectile.temp.data[dataCount].speed;
+          } else if (projectile.same !== true) {
+            projectile.temp.node[tempCount].angle = projectile.temp.data[dataCount].angle;
+            projectile.temp.node[tempCount].speed = projectile.temp.data[dataCount].speed;
+          }
         }
       }
       if (tempCount < projectile.temp.instantCount) {
         Shmup.projectile.curveNode.update(projectile.temp.node[tempCount]);
       }
       if (tempCount > 0) {
-        projectile.distance += Shmup.math.point.pythagorean(true, projectile.temp.node[tempCount - 1].position, projectile.temp.node[tempCount].position, true);
+        projectile.distance += Shmup.math.point.distance(true, projectile.temp.node[tempCount - 1].position, projectile.temp.node[tempCount].position, true);
       }
     }
     if (projectile.temp.instantCount < projectile.count) {
@@ -274,7 +279,7 @@ Shmup.plugin.projectile("curveNode", {
     angle: 0,
     speed: 0,
   },
-  create: function(data) {
+  add: function(data) {
     var projectile = Shmup.advanced.process().wait.curveNode.get();
     if (data.data) {
       projectile.data = data.data;
@@ -285,7 +290,7 @@ Shmup.plugin.projectile("curveNode", {
     projectile.speed = data.speed || 1;
     return projectile;
   },
-  vanish: function(projectile) {
+  remove: function(projectile) {
     projectile.position.x = 0;
     projectile.position.y = 0;
     projectile.angle = 0;
