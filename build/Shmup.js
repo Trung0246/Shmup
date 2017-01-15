@@ -160,7 +160,7 @@
         if (!process.wait[key]) {
           if (typeof data.maxProjectile === "number") {
             process.wait[key] = new Pool(main.projectile[key].data, data.maxProjectile, true);
-          } else if (data.maxProjectile.key) {
+          } else if (data.maxProjectile[key]) {
             process.wait[key] = new Pool(main.projectile[key].data, data.maxProjectile[key], true);
           } else {
             throw new Error("Unknown pool size of " + key);
