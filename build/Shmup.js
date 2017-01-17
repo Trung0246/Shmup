@@ -1,7 +1,7 @@
 (function(window) {
   'use strict';
   /*
-  Shmup.js v1.2.2
+  Shmup.js v1.2.3
 
   MIT License
 
@@ -54,7 +54,7 @@
 
   //Define current Shmup.js version string
   Object.defineProperty(main, "VERSION", {
-    value: "1.2.2",
+    value: "1.2.3",
     writable: false,
     enumerable: true,
     configurable: true,
@@ -88,7 +88,7 @@
       this.returnData.iterate = this.tempTask;
       return this.returnData;
     },
-  }
+  };
   
   function Gunner(data) {
     this.angle = data.angle || 0;
@@ -389,45 +389,36 @@
     },
     out: function(type, position) {
       switch (type) {
-        case 1: {
+        case 0: {
           if (position.y < -data.scene.boundary) {
-            return true;
-          } else {
-            return false;
+            return 1;
+          } else if (data.scene.size.x + data.scene.boundary < position.x) {
+            return 2;
+          } else if (data.scene.size.y + data.scene.boundary < position.y) {
+            return 3;
+          } else if (position.x < -data.scene.boundary) {
+            return 4;
           }
+        }
+        break;
+        case 1: {
+          return position.y < -data.scene.boundary;
         }
         break;
         case 2: {
-          if (data.scene.size.x + data.scene.boundary < position.x) {
-            return true;
-          } else {
-            return false;
-          }
-          
+          return data.scene.size.x + data.scene.boundary < position.x;
         }
         break;
         case 3: {
-          if (data.scene.size.y + data.scene.boundary < position.y) {
-            return true;
-          } else {
-            return false;
-          }
+          return data.scene.size.y + data.scene.boundary < position.y;
         }
         break;
         case 4: {
-          if (position.x < -data.scene.boundary) {
-            return true;
-          } else {
-            return false;
-          }
+          return position.x < -data.scene.boundary;
         }
         break;
         default: {
-          if (position.x < -data.scene.boundary || data.scene.size.x + data.scene.boundary < position.x || position.y < -data.scene.boundary || data.scene.size.y + data.scene.boundary < position.y) {
-            return true;
-          } else {
-            return false;
-          }
+          return position.x < -data.scene.boundary || data.scene.size.x + data.scene.boundary < position.x || position.y < -data.scene.boundary || data.scene.size.y + data.scene.boundary < position.y;
         }
       }
     },
@@ -527,7 +518,7 @@
       aim: function(start, target) {
         return -Math.atan2(start.x - target.x, -(start.y - target.y));
       },
-      bounce: function(angle, miror) {
+      bounce: function(angle, mirror) {
         return 2 * mirror - angle;
       },
       different: function (angleOne, angleTwo) {
@@ -640,9 +631,9 @@
         //http://stackoverflow.com/questions/849211/
         if (type === true) {
           var l2 = main.math.point.distance(true, start, end, false);
-          if (l2 == 0) {
+          if (l2 === 0) {
             return main.math.point.distance(true, position, start, false);
-          };
+          }
           var t = ((position.x - start.x) * (end.x - start.x) + (position.y - start.y) * (end.y - start.y)) / l2;
           t = Math.max(0, Math.min(1, t));
           return main.math.point.distance(true, position, {
@@ -657,7 +648,6 @@
         //http://jsfiddle.net/3SY8v/
         var xlen = end.x - start.x;
         var ylen = end.y - start.y;
-        var hlen = main.math.point.distance(false, xlen, ylen, true);
         var smallerXLen = xlen * location;
         var smallerYLen = ylen * location;
         return {
@@ -666,9 +656,9 @@
         };
       },
       getX: function(posOne, posTwo, yValue) {
-        var a_numerator = posTwo.y - posOne.y;
+        var a_numberator = posTwo.y - posOne.y;
         var a_denominator = posTwo.x - posOne.x;
-        if (a_numerator === 0){
+        if (a_numberator === 0){
           return posTwo.x;
         } else {
           var a = a_numberator / a_denominator;
@@ -679,7 +669,7 @@
         }
       },
       getY: function(posOne, posTwo, xValue) {
-        var a_numerator = posTwo.y - posOne.y;
+        var a_numberator = posTwo.y - posOne.y;
         var a_denominator = posTwo.x - posOne.x;
         if (a_denominator === 0){
           return posTwo.y;
@@ -778,6 +768,13 @@
         } else {
           return mod + reverse - value;
         }
+      },
+      remainder: function(a, b) {
+        //http://stackoverflow.com/questions/34291760/
+         var res = a % b;
+         if (res < 0)
+            res += b;
+         return res;
       },
       factorial: function(value) {
         var result = 1;
@@ -1001,12 +998,6 @@
         };
         normalized = main.math.angle.radian.full(normalized);
         var result;
-        var tempAim = {
-          bottomLeft: main.math.angle.radian.full(main.math.angle.aim(position, corner.bottomLeft)),
-          bottomRight: main.math.angle.radian.full(main.math.angle.aim(position, corner.bottomRight)),
-          topRight: main.math.angle.radian.full(main.math.angle.aim(position, corner.topRight)),
-          topLeft: main.math.angle.radian.full(main.math.angle.aim(position, corner.topLeft)),
-        };
         var tempResult = {
           bottom: main.math.line.intersect(corner.bottomLeft, corner.bottomRight, position, tempPos),
           right: main.math.line.intersect(corner.bottomRight, corner.topRight, position, tempPos),
@@ -1337,8 +1328,6 @@
         position = position || {};
         position.x = position.x || 0;
         position.y = position.y || 0;
-        value = value || 1;
-        multiply = multiply || 1;
         power = power || 2;
         time = time || 0;
         power = power || 2;
@@ -1501,7 +1490,7 @@
     this.last = this.size;
     this.isChange = isChange;
     return this;
-  };
+  }
   Pool.prototype.get = function(i) {
     i = i || 0;
     if (this.last <= 0) {
@@ -1608,8 +1597,8 @@
       return (n + x) / d;                 // Form the number within [0, 1).
     };
 
-    prng.int32 = function() { return arc4.g(4) | 0; }
-    prng.quick = function() { return arc4.g(4) / 0x100000000; }
+    prng.int32 = function() { return arc4.g(4) | 0; };
+    prng.quick = function() { return arc4.g(4) / 0x100000000; };
     prng.double = prng;
 
     // Mix the randomness into accumulated entropy.
@@ -1622,7 +1611,7 @@
             // Load the arc4 state from the given state if it has an S array.
             if (state.S) { copy(state, arc4); }
             // Only provide the .state method if requested via options.state.
-            prng.state = function() { return copy(arc4, {}); }
+            prng.state = function() { return copy(arc4, {}); };
           }
 
           // If called as a method of Math (Math.seedrandom()), mutate
@@ -1693,7 +1682,7 @@
     t.j = f.j;
     t.S = f.S.slice();
     return t;
-  };
+  }
 
   /*
    * flatten()
@@ -1777,11 +1766,3 @@
   [],     // pool: entropy pool starts empty
   Math    // math: package containing random, pow, and seedrandom
 );
-
-/*
-function AngularDistance(angle1, angle2){
-  let distance = NormalizeAngle(angle2 - angle1);
-  if(distance>180){ distance-=360; }
-  return distance;
-}
-*/
