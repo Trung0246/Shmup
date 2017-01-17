@@ -398,6 +398,8 @@
             return 3;
           } else if (position.x < -data.scene.boundary) {
             return 4;
+          } else {
+            return 0;
           }
         }
         break;
@@ -998,6 +1000,12 @@
         };
         normalized = main.math.angle.radian.full(normalized);
         var result;
+        /*var tempAim = {
+          bottomLeft: main.math.angle.radian.full(main.math.angle.aim(position, corner.bottomLeft)),
+          bottomRight: main.math.angle.radian.full(main.math.angle.aim(position, corner.bottomRight)),
+          topRight: main.math.angle.radian.full(main.math.angle.aim(position, corner.topRight)),
+          topLeft: main.math.angle.radian.full(main.math.angle.aim(position, corner.topLeft)),
+        };*/
         var tempResult = {
           bottom: main.math.line.intersect(corner.bottomLeft, corner.bottomRight, position, tempPos),
           right: main.math.line.intersect(corner.bottomRight, corner.topRight, position, tempPos),
