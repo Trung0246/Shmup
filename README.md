@@ -1,7 +1,7 @@
 # Shmup
 A library for bullet hell in Javascript
 
-Development version: **1.2.2**
+Development version: **1.2.3**
 
 This is the development branch, [please go to stable branch for stable version](https://github.com/Trung0246/Shmup/tree/stable-1.1.4).
 
